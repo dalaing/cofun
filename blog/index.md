@@ -6,9 +6,9 @@ This page collects various resources related to a YOW Lambda Jam talk I am givin
 
 ### The talk
 
-- [The slides](https://github.com/dalaing/cofun/slides/slides.pdf)
+- [The slides](https://github.com/dalaing/cofun/blob/master/slides/slides.pdf)
 - [The code](https://github.com/dalaing/cofun/code)
-- The talk will be linked here when it is available
+- The talk video will be linked here when it is available
 
 <!-- ### Blog posts -->
 
