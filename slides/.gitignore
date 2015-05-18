@@ -1,0 +1,8 @@
+_minted-slides
+*.aux
+*.out
+*.toc
+*.nav
+*.log
+*.snm
+*.vrb
