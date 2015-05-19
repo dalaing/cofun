@@ -25,15 +25,16 @@ library
                        , AdderService.Net.Server
   -- other-modules:       
   -- other-extensions:    
-  build-depends:         base >=4.7 && <4.8
-                       , transformers       >= 0.4      && < 0.5
-                       , mtl >= 2.2 && < 2.3
-                       , bytestring >= 0.10 && < 0.11
-                       , binary >=0.7 && <0.8
-                       , network-simple >=0.4 && < 0.5
-                       , free >= 4.12 && <4.13
-                       , cofun-pairing >=0.1 && <0.2
-                       , adder >=0.1 && <0.2
+  build-depends:         base           >= 4.7  && < 4.8
+                       , transformers   >= 0.4  && < 0.5
+                       , mtl            >= 2.2  && < 2.3
+                       , bytestring     >= 0.10 && < 0.11
+                       , binary         >= 0.7  && < 0.8
+                       , network-simple >= 0.4  && < 0.5
+                       , errors         >= 1.4  && < 1.5
+                       , free           >= 4.12 && < 4.13
+                       , cofun-pairing  >= 0.1  && < 0.2
+                       , adder          >= 0.1  && < 0.2
   hs-source-dirs:      src
   ghc-options:         -Wall
   default-language:    Haskell2010

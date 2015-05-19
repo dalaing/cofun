@@ -18,6 +18,7 @@ import           Control.Monad.Reader         (MonadReader, ask, runReaderT)
 import           Data.Functor.Identity        (Identity (..))
 
 import           Data.Binary                  (decode, encode)
+import Control.Error.Util (note)
 import qualified Data.ByteString.Lazy         as L (fromStrict, toStrict)
 import           Network.Simple.TCP           (HostName, ServiceName, Socket,
                                                connect, recv, send)
@@ -29,7 +30,7 @@ mkServer = coiterT f (Identity ())
       s <- ask
       send s . L.toStrict . encode $ req
       res <- fmap (decode . L.fromStrict) <$> recv s 1024
-      return (res, w)
+      return (note Disconnected res, w)
 
 runClient' :: (Functor m, MonadReader Socket m, MonadError NetError m, MonadIO m) => m ()
 runClient' = pairEffectM (\_ r -> return r) mkServer consoleAdder
