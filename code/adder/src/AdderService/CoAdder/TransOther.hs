@@ -6,8 +6,8 @@ module AdderService.CoAdder.TransOther (
 import           AdderService.Functors        (CoAdderF (..))
 
 import           Control.Applicative          ((<$>), (<*>))
-import           Control.Comonad              (extend, extract)
-import           Control.Comonad.Store        (StoreT (..), pos, seek)
+import           Control.Comonad              (duplicate)
+import           Control.Comonad.Store        (StoreT (..), pos, peek)
 import           Control.Comonad.Trans.Class  (lower)
 import           Control.Comonad.Trans.Cofree (CofreeT, coiterT)
 import           Control.Comonad.Trans.Env    (EnvT (..), ask)
@@ -18,7 +18,7 @@ type Base = EnvT Int (StoreT Int Identity)
 type CoAdderT = CofreeT CoAdderF
 
 coAdd :: Base a -> Int -> (Bool, Base a)
-coAdd w x = (test, extend (extract . seek next . lower) w)
+coAdd w x = (test, peek next . lower . duplicate $ w)
   where
     count = pos . lower $ w
     limit = ask w
@@ -27,7 +27,7 @@ coAdd w x = (test, extend (extract . seek next . lower) w)
     next = if test then x' else count
 
 coClear :: Base a -> Base a
-coClear = extend (extract . seek 0 . lower)
+coClear = peek 0 . lower . duplicate
 
 coTotal :: Base a -> (Int, Base a)
 coTotal w = (pos (lower w), w)

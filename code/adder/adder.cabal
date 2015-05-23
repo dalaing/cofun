@@ -22,6 +22,7 @@ library
                        , AdderService.Adder.Console
                        , AdderService.Adder.Limit
                        , AdderService.CoAdder.Class
+                       , AdderService.CoAdder.ClassOther
                        , AdderService.CoAdder.Pure
                        , AdderService.CoAdder.Trans
                        , AdderService.CoAdder.TransOther

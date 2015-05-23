@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts      #-}
-module AdderService.CoAdder.Class (
+module AdderService.CoAdder.ClassOther (
     CoAdder
   , mkCoAdder
   ) where
@@ -15,7 +15,7 @@ import           Control.Comonad.Trans.Store  (StoreT (..))
 import           Data.Functor.Identity        (Identity (..))
 
 type CoAdderT = CofreeT CoAdderF
-type CoAdder = CoAdderT (StoreT Int (EnvT Int Identity))
+type CoAdder = CoAdderT (EnvT Int (StoreT Int Identity))
 
 coAdd :: (ComonadEnv Int w, ComonadStore Int w) => w a -> Int -> (Bool, w a)
 coAdd w x = (test, seek next w)
@@ -37,4 +37,4 @@ mkCoAdder limit count =
     coiterT next start
   where
     next = CoAdderF <$> coAdd <*> coClear <*> coTotal
-    start = flip StoreT count . EnvT limit . Identity $ const ()
+    start = EnvT limit . flip StoreT count . Identity $ const ()
