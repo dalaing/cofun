@@ -18,20 +18,22 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:       AdderService.Adder
-                       , AdderService.Functors
                        , AdderService.Adder.Console
+                       , AdderService.Adder.Interpreter
                        , AdderService.Adder.Limit
                        , AdderService.CoAdder.Class
                        , AdderService.CoAdder.ClassOther
                        , AdderService.CoAdder.Pure
                        , AdderService.CoAdder.Trans
                        , AdderService.CoAdder.TransOther
+                       , AdderService.Functors
   -- other-modules:       
   -- other-extensions:    
   build-depends:         base           >= 4.7  && < 4.8
-                       , transformers  >= 0.4  && < 0.5
-                       , free          >= 4.12 && < 4.13
-                       , comonad       >= 4.2  && < 4.3
+                       , transformers   >= 0.4  && < 0.5
+                       , mtl            >= 2.2  && < 2.3
+                       , free           >= 4.12 && < 4.13
+                       , comonad        >= 4.2  && < 4.3
                        , cofun-pairing  >= 0.1  && < 0.2
   hs-source-dirs:      src
   ghc-options:         -Wall
