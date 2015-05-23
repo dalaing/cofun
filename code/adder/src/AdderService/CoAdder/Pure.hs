@@ -13,9 +13,9 @@ type CoAdder = Cofree CoAdderF
 coAdd :: (Int, Int) -> Int -> (Bool, (Int, Int))
 coAdd (limit, count) x = (test, (limit, next))
   where
-    x' = count + x
-    test = x' <= limit
-    next = if test then x' else count
+    count' = count + x
+    test = count' <= limit
+    next = if test then count' else count
 
 coClear :: (Int, Int) -> (Int, Int)
 coClear (limit, _) = (limit, 0)

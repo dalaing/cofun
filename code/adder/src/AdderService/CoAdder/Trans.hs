@@ -21,9 +21,9 @@ coAdd w x = (test, seek next w)
   where
     count = pos  w
     limit = ask . lower $ w
-    x' = count + x
-    test = x' <= limit
-    next = if test then x' else count
+    count' = count + x
+    test = count' <= limit
+    next = if test then count' else count
 
 coClear :: Base a -> Base a
 coClear = seek 0

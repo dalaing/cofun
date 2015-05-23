@@ -13,9 +13,9 @@ coAdd w = CoAdd $ \x ->
   let
     count = pos w
     limit = ask w
-    x' = count + x
-    test = x' <= limit
-    next = if test then x' else count
+    count' = count + x
+    test = count' <= limit
+    next = if test then count' else count
   in
     (test, seek next w)
 

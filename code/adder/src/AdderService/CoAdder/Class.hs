@@ -22,9 +22,9 @@ coAdd w x = (test, seek next w)
   where
     count = pos w
     limit = ask w
-    x' = count + x
-    test = x' <= limit
-    next = if test then x' else count
+    count' = count + x
+    test = count' <= limit
+    next = if test then count' else count
 
 coClear :: ComonadStore Int w => w a -> w a
 coClear = seek 0

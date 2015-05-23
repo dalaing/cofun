@@ -931,8 +931,8 @@ coTotal (limit, count) = (count, (limit, count))
 coAdd :: (Limit, Count) -> Int -> (Bool, (Limit, Count))
 coAdd (limit, count) x = (_   , (limit, _   ))
   where
-    x' = count + x
-    test = x' <= limit
+    count' = count + x
+    test   = count' <= limit
 
   \end{minted}
     \onslide<6>
@@ -948,8 +948,8 @@ coTotal (limit, count) = (count, (limit, count))
 coAdd :: (Limit, Count) -> Int -> (Bool, (Limit, Count))
 coAdd (limit, count) x = (test, (limit, _   ))
   where
-    x' = count + x
-    test = x' <= limit
+    count' = count + x
+    test   = count' <= limit
 
   \end{minted}
     \onslide<7>
@@ -965,9 +965,9 @@ coTotal (limit, count) = (count, (limit, count))
 coAdd :: (Limit, Count) -> Int -> (Bool, (Limit, Count))
 coAdd (limit, count) x = (test, (limit, _   ))
   where
-    x' = count + x
-    test = x' <= limit
-    next = if test then x' else count
+    count' = count + x
+    test   = count' <= limit
+    next   = if test then count' else count
   \end{minted}
     \onslide<8>
     \begin{minted}{haskell}
@@ -982,9 +982,9 @@ coTotal (limit, count) = (count, (limit, count))
 coAdd :: (Limit, Count) -> Int -> (Bool, (Limit, Count))
 coAdd (limit, count) x = (test, (limit, next))
   where
-    x' = count + x
-    test = x' <= limit
-    next = if test then x' else count
+    count' = count + x
+    test   = count' <= limit
+    next   = if test then count' else count
   \end{minted}
   \end{overprint}
 \end{frame}
@@ -1205,9 +1205,9 @@ coTotal w              = (pos w, w)
 coAdd :: (Limit, Count) -> Int -> (Bool, (Limit, Count))
 coAdd (limit, count) x = (test, (limit, next))
   where
-    x' = count + x
-    test = x' <= limit
-    next = if test then x' else count
+    count' = count + x
+    test   = count' <= limit
+    next   = if test then count' else count
   \end{minted}
 \end{frame}
 
@@ -1235,9 +1235,9 @@ coAdd (limit, count) x = (test, (limit, next))
   where
 
 
-    x' = count + x
-    test = x' <= limit
-    next = if test then x' else count
+    count' = count + x
+    test   = count' <= limit
+    next   = if test then count' else count
     \end{minted}
     \onslide<2>
     \begin{minted}{haskell}
@@ -1248,9 +1248,9 @@ coAdd (limit, count) x = (test, (limit, next))
   where
 
 
-    x' = count + x
-    test = x' <= limit
-    next = if test then x' else count
+    count' = count + x
+    test   = count' <= limit
+    next   = if test then count' else count
     \end{minted}
     \onslide<3>
     \begin{minted}{haskell}
@@ -1261,9 +1261,9 @@ coAdd (limit, count) x = (test, (limit, next))
   where
 
 
-    x' = count + x
-    test = x' <= limit
-    next = if test then x' else count
+    count' = count + x
+    test   = count' <= limit
+    next   = if test then count' else count
     \end{minted}
     \onslide<4>
     \begin{minted}{haskell}
@@ -1272,11 +1272,11 @@ type Base = StoreT Count (EnvT Limit Identity)
 coAdd :: Base a         -> Int -> (Bool, Base a)
 coAdd w              x = (test, seek next w)
   where
-    count = _
-    limit = _
-    x' = count + x
-    test = x' <= limit
-    next = if test then x' else count
+    count  = _
+    limit  = _
+    count' = count + x
+    test   = count' <= limit
+    next   = if test then count' else count
   \end{minted}
     \onslide<5>
   \begin{minted}{haskell}
@@ -1285,11 +1285,11 @@ type Base = StoreT Count (EnvT Limit Identity)
 coAdd :: Base a         -> Int -> (Bool, Base a)
 coAdd w              x = (test, seek next w)
   where
-    count = pos w
-    limit = ask . lower $ w
-    x' = count + x
-    test = x' <= limit
-    next = if test then x' else count
+    count  = pos w
+    limit  = ask . lower $ w
+    count' = count + x
+    test   = count' <= limit
+    next   = if test then count' else count
   \end{minted}
   \end{overprint}
 \end{frame}
@@ -1315,11 +1315,11 @@ coAdd ::
          Base a -> Int -> (Bool, Base a)
 coAdd w x = (test, seek next w)
   where
-    count = pos w
-    limit = ask . lower $ w
-    x' = count + x
-    test = x' <= limit
-    next = if test then x' else count
+    count  = pos w
+    limit  = ask . lower $ w
+    count' = count + x
+    test   = count' <= limit
+    next   = if test then count' else count
   \end{minted}
     \onslide<2>
   \begin{minted}{haskell}
@@ -1337,11 +1337,11 @@ coAdd :: (ComonadEnv Limit w, ComonadStore Count w)
       => Base a -> Int -> (Bool, Base a)
 coAdd w x = (test, seek next w)
   where
-    count = pos w
-    limit = ask . lower $ w
-    x' = count + x
-    test = x' <= limit
-    next = if test then x' else count
+    count  = pos w
+    limit  = ask . lower $ w
+    count' = count + x
+    test   = count' <= limit
+    next   = if test then count' else count
   \end{minted}
     \onslide<3>
   \begin{minted}{haskell}
@@ -1359,11 +1359,11 @@ coAdd :: (ComonadEnv Limit w, ComonadStore Count w)
       => w    a -> Int -> (Bool, w    a)
 coAdd w x = (test, seek next w)
   where
-    count = pos w
-    limit = ask . lower $ w
-    x' = count + x
-    test = x' <= limit
-    next = if test then x' else count
+    count  = pos w
+    limit  = ask . lower $ w
+    count' = count + x
+    test   = count' <= limit
+    next   = if test then count' else count
   \end{minted}
   \onslide<4>
     \begin{minted}{haskell}
@@ -1381,11 +1381,11 @@ coAdd :: (ComonadEnv Limit w, ComonadStore Count w)
       => w    a -> Int -> (Bool, w    a)
 coAdd w x = (test, seek next w)
   where
-    count = pos w
-    limit = ask w
-    x' = count + x
-    test = x' <= limit
-    next = if test then x' else count
+    count  = pos w
+    limit  = ask w
+    count' = count + x
+    test   = count' <= limit
+    next   = if test then count' else count
   \end{minted}
   \end{overprint}
 \end{frame}

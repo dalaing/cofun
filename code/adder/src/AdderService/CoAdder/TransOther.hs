@@ -22,9 +22,9 @@ coAdd w x = (test, peek next . lower . duplicate $ w)
   where
     count = pos . lower $ w
     limit = ask w
-    x' = count + x
-    test = x' <= limit
-    next = if test then x' else count
+    count' = count + x
+    test = count' <= limit
+    next = if test then count' else count
 
 coClear :: Base a -> Base a
 coClear = peek 0 . lower . duplicate
