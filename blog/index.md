@@ -32,7 +32,14 @@ The pairing trick from my talk has been described before, by
 
 - [Comonads are objects](http://www.haskellforall.com/2013/02/you-could-have-invented-comonads.html)
 
+#### The combination of comonads and monads
+
+- [Transforming a comonad with a monad](http://blog.sigfpe.com/2008/03/transforming-comonad-with-monad.html)
+- [Monads from comonads](http://comonad.com/reader/2011/monads-from-comonads/)
+- [Monad transformers from comonads](http://comonad.com/reader/2011/monad-transformers-from-comonads/)
+
 #### Coproducts
 
 - [Data types a la carte](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.101.4131)
+- [Breaking things down even further](http://stackoverflow.com/a/21395817)
 
