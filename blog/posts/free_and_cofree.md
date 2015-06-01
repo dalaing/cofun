@@ -11,7 +11,7 @@ The slides, these posts, and the associated code are in the [github repository](
 
 ## An introduction to free monads for DSLs
 
-I'm not going to be getting into the underlying theory of free monads to any extend in these posts.
+I'm not going to be getting into the underlying theory of free monads to any extent in these posts.
 
 Instead I'll be focusing on the use of free monads in order to build something like a DSL (domain-specific language).
 
