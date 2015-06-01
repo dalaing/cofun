@@ -10,11 +10,23 @@ This page collects various resources related to a YOW Lambda Jam talk I am givin
 - [The code](https://github.com/dalaing/cofun/tree/master/code)
 - The talk video will be linked here when it is available
 
-<!-- ### Blog posts -->
+### Posts
+
+I've writtend some blog posts corresponding to the content of the talk:
+
+- [Free monads for DSL, cofree comonads for interpreters](/posts/free_and_cofree.html)
+<!-- - [Cleaning up with comonad transformers](/posts/cofree_and_comonad_transformers.html)
+- [Factoring out functionality with coproducts and friends](/posts/coproducts_for_free_and_products_for_cofree.html) -->
+
+Coming soon:
+
+- Cleaning up with comonad transformers
+- Factoring out functionality with coproducts and friends
+- Pairing, effects and networking
+
+and there will be more to follow.
 
 ### Links
-
-More links coming soon.
 
 #### Pairing
 
@@ -42,4 +54,3 @@ The pairing trick from my talk has been described before, by
 
 - [Data types a la carte](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.101.4131)
 - [Breaking things down even further](http://stackoverflow.com/a/21395817)
-
