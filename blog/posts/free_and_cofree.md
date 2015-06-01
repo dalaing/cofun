@@ -99,7 +99,7 @@ type Adder a =
   | Free (Total (Int -> Adder a)
 ```
 
-If we were thinking of `k` as "what to do next", we see that the thing that we do after carrying out an action in the `Adder` monad is either
+If we were thinking of `k` as "what to do next", it is now either
 - return a value
 - carry out another action in the `Adder` monad
 
