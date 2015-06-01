@@ -7,7 +7,7 @@ published: 2015-06-01 22:00:00+10:00
 
 This is the first post in a series of posts, which will cover the material from a talk I gave at YOW! Lambda Jam, titled "Cofun with Cofree Comonads".
 
-The slides, these posts, and the associated code are in the [github repository](https://github.com/dalaing/cofun).
+The slides, these posts, and the associated code are in the [github repository](https://github.com/dalaing/cofun), although the code is evolving at a steady pace and the code that supports future draft posts is likely to change a lot between now and when I get the related blog posts together.
 
 ## An introduction to free monads for DSLs
 
