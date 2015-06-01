@@ -21,7 +21,7 @@ If you haven't come across free monads before, I recommend reading those posts b
 
 ### Free
 
-The `Free` datatype has two constructors:
+The `Free` data type has two constructors:
 ```haskell
 data Free f a =
     Pure a
@@ -44,7 +44,7 @@ instance Functor f => Monad (Free f) where
 In the above instance
 
 - `return` turns a pure value into a leaf of the tree
-- `>>=` takes a function for turning pure values into trees, and subsitutes the leaves with the trees which result from running that function on the values in the leaves
+- `>>=` takes a function for turning pure values into trees, and substitutes the leaves with the trees which result from running that function on the values in the leaves
 
 ### Our toy DSL
 
@@ -334,7 +334,7 @@ There is a handy way to bring `Free` and `Cofree` together, which has previously
 [Ed Kmett](http://comonad.com/reader/2008/the-cofree-comonad-and-the-expression-problem/}{http://comonad.com/reader/2008/the-cofree-comonad-and-the-expression-problem/) and
 [Dan Piponi](http://blog.sigfpe.com/2014/05/cofree-meets-free.html}{http://blog.sigfpe.com/2014/05/cofree-meets-free.html).
 
-I'll be using the terminology - and some of the instances - from Dan's post.
+I'll be using the terminology - and some of the instances - from Dans post.
 
 We start by introducing a new typeclass, `Pairing`:
 ```haskell
@@ -468,7 +468,7 @@ The current version of our interpreter is manually handing both environment and 
 We can clean this up by using comonad transformers.
 This turns out to be pretty similar to working with monad transformers, down to the fact that we can use the transformers in either `transformers` or `mtl` style.
 
-We can break the DSL down into independent parts using coproducts, as covered in [Datatypes a la carte](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.101.4131).
+We can break the DSL down into independent parts using coproducts, as covered in [Data types a la carte](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.101.4131).
 In addition to this, we can factor out the independent parts of the interpreter using products.
 
 We can bring some other effects into the mix.
