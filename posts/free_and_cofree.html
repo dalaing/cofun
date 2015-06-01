@@ -39,7 +39,7 @@
 <p>Instead I’ll be focusing on the use of free monads in order to build something like a DSL (domain-specific language).</p>
 <p>Gabriel Gonzales has written some great posts on free monads <a href="http://www.haskellforall.com/2012/06/you-could-have-invented-free-monads.html">here</a> and <a href="http://www.haskellforall.com/2012/07/purify-code-using-free-monads.html">here</a>. If you haven’t come across free monads before, I recommend reading those posts before continuing, because I’m most likely going to butcher the explanation in my rush to get to cofree.</p>
 <h3 id="free">Free</h3>
-<p>The <code>Free</code> datatype has two constructors:</p>
+<p>The <code>Free</code> data type has two constructors:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Free</span> f a <span class="fu">=</span>
     <span class="dt">Pure</span> a
   <span class="fu">|</span> <span class="dt">Free</span> (f (<span class="dt">Free</span> f a))</code></pre></div>
@@ -53,7 +53,7 @@
 <p>In the above instance</p>
 <ul>
 <li><code>return</code> turns a pure value into a leaf of the tree</li>
-<li><code>&gt;&gt;=</code> takes a function for turning pure values into trees, and subsitutes the leaves with the trees which result from running that function on the values in the leaves</li>
+<li><code>&gt;&gt;=</code> takes a function for turning pure values into trees, and substitutes the leaves with the trees which result from running that function on the values in the leaves</li>
 </ul>
 <h3 id="our-toy-dsl">Our toy DSL</h3>
 <p>It turns out this is pretty handy for defining and working with DSLs, so lets put a toy DSL together in order to see what this actually gives us.</p>
@@ -233,7 +233,7 @@ coAdd (limit, count) x <span class="fu">=</span> (test, (limit, next))
 <p>Now we an interpreter that is independent from our DSL. Just like with our DSL, we can build on things on top of our interpreter, we can destruct the <code>Cofree</code> structure in order to match it to a DSL, and we do that for different DSLs for different purposes.</p>
 <h2 id="combining-the-free-and-cofree">Combining the free and cofree</h2>
 <p>There is a handy way to bring <code>Free</code> and <code>Cofree</code> together, which has previously been discussed by <a href="http://comonad.com/reader/2008/the-cofree-comonad-and-the-expression-problem/}{http://comonad.com/reader/2008/the-cofree-comonad-and-the-expression-problem/">Ed Kmett</a> and <a href="http://blog.sigfpe.com/2014/05/cofree-meets-free.html}{http://blog.sigfpe.com/2014/05/cofree-meets-free.html">Dan Piponi</a>.</p>
-<p>I’ll be using the terminology - and some of the instances - from Dan’s post.</p>
+<p>I’ll be using the terminology - and some of the instances - from Dans post.</p>
 <p>We start by introducing a new typeclass, <code>Pairing</code>:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">class</span> (<span class="dt">Functor</span> f, <span class="dt">Functor</span> g) <span class="ot">=&gt;</span> <span class="dt">Pairing</span> f g <span class="kw">where</span>
 <span class="ot">    pair ::</span> (a <span class="ot">-&gt;</span> b <span class="ot">-&gt;</span> r) <span class="ot">-&gt;</span> f a <span class="ot">-&gt;</span> g b <span class="ot">-&gt;</span> r</code></pre></div>
@@ -315,7 +315,7 @@ testLimit x <span class="fu">=</span> runLimit (mkCoAdder x <span class="dv">0</
 <h2 id="where-to-from-here">Where to from here</h2>
 <p>I have a lot I’d like to explore and write about, but the next few topics will be based on the things I already partly covered in the talk that this is based on.</p>
 <p>The current version of our interpreter is manually handing both environment and state. We can clean this up by using comonad transformers. This turns out to be pretty similar to working with monad transformers, down to the fact that we can use the transformers in either <code>transformers</code> or <code>mtl</code> style.</p>
-<p>We can break the DSL down into independent parts using coproducts, as covered in <a href="http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.101.4131">Datatypes a la carte</a>. In addition to this, we can factor out the independent parts of the interpreter using products.</p>
+<p>We can break the DSL down into independent parts using coproducts, as covered in <a href="http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.101.4131">Data types a la carte</a>. In addition to this, we can factor out the independent parts of the interpreter using products.</p>
 <p>We can bring some other effects into the mix. This will allows us to interact with our interpreter from the console, and to connect our DSL to our interpreter over the network.</p>
 <p>There’s a lot more in the queue, but comonad transformers, coproducts/products, and working with additional effects should make a pretty good start.</p>
     </div>
