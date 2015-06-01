@@ -100,6 +100,7 @@ type Adder a =
 ```
 
 If we were thinking of `k` as "what to do next", it is now either
+
 - return a value
 - carry out another action in the `Adder` monad
 
