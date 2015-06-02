@@ -384,7 +384,7 @@ instance Pairing CoAdderF AdderF where
   pair f (CoAdderF _ _ t) (Total k) = pair f t k
 ```
 
-Not that we're using the `Pairing` instance for `(->)` and `(,)` in the case of `Total`, and could have done something similar for `Add` if we'd tupled its arguments.
+Note that we're using the `Pairing` instance for `(->)` and `(,)` in the case of `Total`, and could have done something similar for `Add` if we'd tupled its arguments.
 
 ### Making use of the pairing
 
