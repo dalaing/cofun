@@ -288,6 +288,8 @@ So armed, we begin the definition of our interpreter:
 type Limit = Int
 type Count = Int
 
+type CoAdder a = Cofree CoAdderF a
+
 mkCoAdder :: Limit -> Count -> CoAdder (Limit, Count)
 mkCoAdder limit count = coiter next start
   where
