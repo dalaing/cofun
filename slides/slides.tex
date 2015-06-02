@@ -798,7 +798,7 @@ mkCoAdder limit count =
 
   where
     next w = CoAdderF _ _ _
-    start (limit, count)
+    start = (limit, count)
   \end{minted}
     \onslide<5>
   \begin{minted}{haskell}
@@ -813,7 +813,7 @@ mkCoAdder limit count =
       :< (coiter next <$> next start)
   where
     next w = CoAdderF _ _ _
-    start (limit, count)
+    start = (limit, count)
   \end{minted}
     \onslide<6>
   \begin{minted}{haskell}
@@ -828,7 +828,7 @@ mkCoAdder limit count =
       :< (coiter next <$> next (next start))
   where
     next w = CoAdderF _ _ _
-    start (limit, count)
+    start = (limit, count)
   \end{minted}
     \onslide<7>
   \begin{minted}{haskell}
@@ -843,7 +843,7 @@ mkCoAdder limit count =
 
   where
     next w = CoAdderF (coAdd w) (coClear w) (coTotal w)
-    start (limit, count)
+    start = (limit, count)
   \end{minted}
   \end{overprint}
 \end{frame}
@@ -1037,7 +1037,7 @@ mkCoAdder limit count =
     () <$ coiter  next start
   where
     next w = CoAdderF (coAdd w) (coClear w) (coTotal w)
-    start (limit, count)
+    start = (limit, count)
 
 
   \end{minted}
@@ -1054,7 +1054,7 @@ mkCoAdder limit count =
     () <$ coiter  next start
   where
     next w = CoAdderF (coAdd w) (coClear w) (coTotal w)
-    start (limit, count)
+    start = (limit, count)
 
 
   \end{minted}
@@ -1071,7 +1071,7 @@ mkCoAdder limit count =
           coiterT next start
   where
     next w = CoAdderF (coAdd w) (coClear w) (coTotal w)
-    start (limit, count)
+    start = (limit, count)
 
 
   \end{minted}

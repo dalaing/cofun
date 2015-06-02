@@ -294,7 +294,7 @@ mkCoAdder :: Limit -> Count -> CoAdder (Limit, Count)
 mkCoAdder limit count = coiter next start
   where
     next w = CoAdderF (coAdd w) (coClear w) (coTotal w)
-    start (limit, count)
+    start = (limit, count)
 ```
 
 At this point we just need to define `coAdd`, `coClear` and `coTotal`.
