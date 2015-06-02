@@ -267,7 +267,7 @@ coAdd (limit, count) x <span class="fu">=</span> (test, (limit, next))
   pair f (<span class="dt">CoAdderF</span> a _ _) (<span class="dt">Add</span> x k) <span class="fu">=</span> pair f (a x) k
   pair f (<span class="dt">CoAdderF</span> _ c _) (<span class="dt">Clear</span> k) <span class="fu">=</span> f c k
   pair f (<span class="dt">CoAdderF</span> _ _ t) (<span class="dt">Total</span> k) <span class="fu">=</span> pair f t k</code></pre></div>
-<p>Not that we’re using the <code>Pairing</code> instance for <code>(-&gt;)</code> and <code>(,)</code> in the case of <code>Total</code>, and could have done something similar for <code>Add</code> if we’d tupled its arguments.</p>
+<p>Note that we’re using the <code>Pairing</code> instance for <code>(-&gt;)</code> and <code>(,)</code> in the case of <code>Total</code>, and could have done something similar for <code>Add</code> if we’d tupled its arguments.</p>
 <h3 id="making-use-of-the-pairing">Making use of the pairing</h3>
 <p>Now let us make use of all of this.</p>
 <p>Given an arbitrary interpreter, we can find its limit:</p>
