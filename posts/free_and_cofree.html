@@ -37,7 +37,7 @@
 <h2 id="an-introduction-to-free-monads-for-dsls">An introduction to free monads for DSLs</h2>
 <p>I’m not going to be getting into the underlying theory of free monads to any extent in these posts.</p>
 <p>Instead I’ll be focusing on the use of free monads in order to build something like a DSL (domain-specific language).</p>
-<p>Gabriel Gonzales has written some great posts on free monads <a href="http://www.haskellforall.com/2012/06/you-could-have-invented-free-monads.html">here</a> and <a href="http://www.haskellforall.com/2012/07/purify-code-using-free-monads.html">here</a>. If you haven’t come across free monads before, I recommend reading those posts before continuing, because I’m most likely going to butcher the explanation in my rush to get to cofree.</p>
+<p>Gabriel Gonzalez has written some great posts on free monads <a href="http://www.haskellforall.com/2012/06/you-could-have-invented-free-monads.html">here</a> and <a href="http://www.haskellforall.com/2012/07/purify-code-using-free-monads.html">here</a>. If you haven’t come across free monads before, I recommend reading those posts before continuing, because I’m most likely going to butcher the explanation in my rush to get to cofree.</p>
 <h3 id="free">Free</h3>
 <p>The <code>Free</code> data type has two constructors:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Free</span> f a <span class="fu">=</span>
