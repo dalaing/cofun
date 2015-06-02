@@ -15,7 +15,7 @@ I'm not going to be getting into the underlying theory of free monads to any ext
 
 Instead I'll be focusing on the use of free monads in order to build something like a DSL (domain-specific language).
 
-Gabriel Gonzales has written some great posts on free monads [here](http://www.haskellforall.com/2012/06/you-could-have-invented-free-monads.html) and [here](http://www.haskellforall.com/2012/07/purify-code-using-free-monads.html).
+Gabriel Gonzalez has written some great posts on free monads [here](http://www.haskellforall.com/2012/06/you-could-have-invented-free-monads.html) and [here](http://www.haskellforall.com/2012/07/purify-code-using-free-monads.html).
 If you haven't come across free monads before, I recommend reading those posts before continuing, because I'm most likely going to butcher the explanation in my rush to get to cofree.
 
 
