@@ -218,7 +218,7 @@ interpret limit count a <span class="fu">=</span> <span class="kw">do</span>
 mkCoAdder limit count <span class="fu">=</span> coiter next start
   <span class="kw">where</span>
     next w <span class="fu">=</span> <span class="dt">CoAdderF</span> (coAdd w) (coClear w) (coTotal w)
-    start (limit, count)</code></pre></div>
+    start <span class="fu">=</span> (limit, count)</code></pre></div>
 <p>At this point we just need to define <code>coAdd</code>, <code>coClear</code> and <code>coTotal</code>.</p>
 <p>Clearing the current total is pretty self explanatory:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">coClear ::</span> (<span class="dt">Limit</span>, <span class="dt">Count</span>) <span class="ot">-&gt;</span> (<span class="dt">Limit</span>, <span class="dt">Count</span>)
