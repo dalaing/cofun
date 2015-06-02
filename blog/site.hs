@@ -23,6 +23,18 @@ main = hakyll $ do
             >>= loadAndApplyTemplate "templates/default.html" postCtx
             >>= relativizeUrls
 
+    -- http://jaspervdj.be/hakyll/tutorials/05-snapshots-feeds.html
+    let rss name render' =
+          create [name] $ do
+              route idRoute
+              compile $ do
+                  let feedCtx = postCtx `mappend` bodyField "description"
+                  posts <- fmap (take 10) . recentFirst =<< loadAllSnapshots "posts/*" "post-content"
+                  render' feedConfiguration feedCtx posts
+
+    rss "rss.xml" renderRss
+    rss "atom.xml" renderAtom
+
     match "index.md" $ do
         route $ setExtension "html"
         compile $ do
@@ -47,3 +59,12 @@ postCtx :: Context String
 postCtx =
     dateField "date" "%B %e, %Y" `mappend`
     defaultContext
+
+feedConfiguration :: FeedConfiguration
+feedConfiguration = FeedConfiguration
+    { feedTitle       = "Cofun with cofree comonads"
+    , feedDescription = ""
+    , feedAuthorName  = "Dave Laing"
+    , feedAuthorEmail = "dave.laing.80@gmail.com"
+    , feedRoot        = "http://dlaing.org/cofun"
+    }
