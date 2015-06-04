@@ -8,8 +8,150 @@
         <name>Dave Laing</name>
         <email>dave.laing.80@gmail.com</email>
     </author>
-    <updated>2015-06-01T12:00:00Z</updated>
+    <updated>2015-06-04T02:00:00Z</updated>
     <entry>
+    <title>A whirlwind tour of comonads</title>
+    <link href="http://dlaing.org/cofun/posts/comonads.html" />
+    <id>http://dlaing.org/cofun/posts/comonads.html</id>
+    <published>2015-06-04T02:00:00Z</published>
+    <updated>2015-06-04T02:00:00Z</updated>
+    <summary type="html"><![CDATA[<h1 id="a-whirlwind-tour-of-comonads">A whirlwind tour of comonads</h1>
+<p>I recommend Gabriel Gonzalez’s <a href="http://www.haskellforall.com/2013/02/you-could-have-invented-comonads.html">explanation</a> if you haven’t read it before.</p>
+<p>I’m posting this because</p>
+<ul>
+<li>it’s part of what I covered in my talk, and I’m converting the rest of it blog form, so why not?</li>
+<li>some people won’t read the above link, and some intuition about comonads is going to help when I start talking about comonad transformers</li>
+</ul>
+<p>I’m mostly interested in conveying some intuition about comonads here, but I’ll start with the typeclass and the laws. Hopefully that will provide a kind of road map that might help when translating the things you’ve learned about monads into a comonadic setting.</p>
+<h2 id="the-typeclasses-and-the-laws">The typeclasses and the laws</h2>
+<p>Recall the typeclass for <code>Monad</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">class</span> <span class="dt">Monad</span> m <span class="kw">where</span>
+<span class="ot">  return    ::</span> a <span class="ot">-&gt;</span> m a
+<span class="ot">  bind      ::</span> (a <span class="ot">-&gt;</span> m b) <span class="ot">-&gt;</span> m a <span class="ot">-&gt;</span> m b
+<span class="ot">  join      ::</span> m (m a) <span class="ot">-&gt;</span> m a</code></pre></div>
+<p>You might be more used to the operator <code>&gt;&gt;=</code> instead of <code>bind</code>. They’re the same function with their arguments flipped. You may also have come across <code>bind</code> in operator form as <code>=&lt;&lt;</code>. I’m using <code>bind</code> here to highlight the <code>Monad</code> / <code>Comonad</code> symmetry that will make an appearance in a moment.</p>
+<p>With monads, we’re building up values in a monadic context from pure values. I hope it is easy to see that <code>return</code> converts a pure value to a value in the monadic context directly.</p>
+<p>We can look at <code>bind</code> as some thing that helps us build up a value in a monadic context in stages. We’re aiming for a <code>m b</code>, we’ve already managed to get hold of an <code>m a</code>. We just need to provide a function to bridge between them, and that function will also build up a value in a monadic context from a pure value.</p>
+<p>To get to <code>Comonad</code>, we flip everything.</p>
+<p>With the usual drollness, this includes the type parameter <code>m</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">class</span> <span class="dt">Comonad</span> w <span class="kw">where</span>
+<span class="ot">  extract   ::</span> w a <span class="ot">-&gt;</span> a
+<span class="ot">  extend    ::</span> (w a <span class="ot">-&gt;</span> b) <span class="ot">-&gt;</span> w a <span class="ot">-&gt;</span> w b
+<span class="ot">  duplicate ::</span> w a <span class="ot">-&gt;</span> w (w a)</code></pre></div>
+<p>With comonads, we’re tearing down values in a comonadic context to get pure values.</p>
+<p>Again, <code>extract</code> does this directly while <code>extend</code> helps us “step down” in stages.</p>
+<p>The laws also go through a similar transformation.</p>
+<p>The monad laws are:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell">  bind return     <span class="fu">=</span> id
+  bind f <span class="fu">.</span> return <span class="fu">=</span> f
+  bind f <span class="fu">.</span> bind g <span class="fu">=</span> bind (bind f <span class="fu">.</span> g)</code></pre></div>
+<p>and the comonad laws are:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"> extend extract      <span class="fu">=</span> id
+ extract <span class="fu">.</span> extend f  <span class="fu">=</span> f
+ extend f <span class="fu">.</span> extend g <span class="fu">=</span> extend (f <span class="fu">.</span> extend g)</code></pre></div>
+<p>There different sets of comonad laws depending on which definitions you provide in the typeclass, and they’re all inter-related. It is worth checking out the <a href="https://hackage.haskell.org/package/comonad/docs/Control-Comonad.html">haddocks</a> to get a sense of those relationships.</p>
+<p>Monads and comonads are both also functors, which we can see from these two functions:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">fmapFromMonad ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> (a <span class="ot">-&gt;</span> b) <span class="ot">-&gt;</span> m a <span class="ot">-&gt;</span> m b
+fmapFromMonad f <span class="fu">=</span> bind (return <span class="fu">.</span> f)
+
+<span class="ot">fmapFromComonad ::</span> <span class="dt">Comonad</span> w <span class="ot">=&gt;</span> (a <span class="ot">-&gt;</span> b) <span class="ot">-&gt;</span> w a <span class="ot">-&gt;</span> w b
+fmapFromComonad f <span class="fu">=</span> extend (f <span class="fu">.</span> extract)</code></pre></div>
+<p>As an exercise for the motivated reader, can you use the <code>Monad</code> / <code>Comonad</code> laws to show that the above functions obey the <code>Functor</code> laws?</p>
+<h2 id="list-zippers">List zippers</h2>
+<p>I think one of the better ways of conveying the intuition of comonads - at least when working with a “container” analogy - is with the List zipper.</p>
+<p>The List zipper represents a non-empty list, with a focus on a particular element:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">ListZipper</span> a <span class="fu">=</span>
+  <span class="dt">ListZipper</span>
+    [a] <span class="co">-- the elements before the focus, in reverse order</span>
+     a  <span class="co">-- the focus</span>
+    [a] <span class="co">-- the elements after the focus</span></code></pre></div>
+<p>This lets us move the focus left and right efficiently:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">leftMay ::</span> <span class="dt">ListZipper</span> a <span class="ot">-&gt;</span> <span class="dt">Maybe</span> (<span class="dt">ListZipper</span> a)
+leftMay (<span class="dt">ListZipper</span> [] f rs)       <span class="fu">=</span> <span class="dt">Nothing</span>
+leftMay (<span class="dt">ListZipper</span> (l <span class="fu">:</span> ls) f rs) <span class="fu">=</span> <span class="dt">Just</span> <span class="fu">$</span> <span class="dt">ListZipper</span> ls l (f <span class="fu">:</span> rs)
+
+<span class="co">-- stay put if we&#39;re at the far left end</span>
+<span class="ot">left ::</span> <span class="dt">ListZipper</span> a <span class="ot">-&gt;</span> <span class="dt">ListZipper</span> a
+left z <span class="fu">=</span> maybe z leftMay z
+
+<span class="ot">rightMay ::</span> <span class="dt">ListZipper</span> a <span class="ot">-&gt;</span> <span class="dt">Maybe</span> (<span class="dt">ListZipper</span> a)
+rightMay (<span class="dt">ListZipper</span> ls f [])       <span class="fu">=</span> <span class="dt">Nothing</span>
+rightMay (<span class="dt">ListZipper</span> ls f (r <span class="fu">:</span> rs)) <span class="fu">=</span> <span class="dt">Just</span> <span class="fu">$</span> <span class="dt">ListZipper</span> (f <span class="fu">:</span> ls) r rs
+
+<span class="co">-- stay put if we&#39;re at the far right end</span>
+<span class="ot">right ::</span> <span class="dt">ListZipper</span> a <span class="ot">-&gt;</span> <span class="dt">ListZipper</span> a
+right z <span class="fu">=</span> maybe z rightMay z</code></pre></div>
+<p>It is pretty easy to come up with a <code>Functor</code> instance:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Functor</span> <span class="dt">ListZipper</span> <span class="kw">where</span>
+  fmap g (<span class="dt">ListZipper</span> ls f rs) <span class="fu">=</span> <span class="dt">ListZipper</span> (fmap g ls) (g f) (fmap g rs)</code></pre></div>
+<p>We can define a <code>Comonad</code> instance, but you don’t need to worry about the details for most of these posts:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Data.Maybe</span> (catMaybes, isJust)
+
+<span class="kw">instance</span> <span class="dt">Comonad</span> <span class="dt">ListZipper</span> <span class="kw">where</span>
+  extract (<span class="dt">ListZipper</span> _ f _) <span class="fu">=</span> f
+  duplicate z <span class="fu">=</span> <span class="dt">ListZipper</span> lefts z rights
+    <span class="kw">where</span>
+      gather f <span class="fu">=</span> tail <span class="fu">.</span> catMaybes <span class="fu">.</span> takeWhile isJust <span class="fu">.</span> iterate (<span class="fu">&gt;&gt;=</span> f) <span class="fu">.</span> <span class="dt">Just</span>
+      lefts <span class="fu">=</span> gather leftMay z
+      rights <span class="fu">=</span> gather rightMay z</code></pre></div>
+<p>With a suitable <code>Show</code> instance, we can see that <code>extract</code> does what we’d expect:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">let</span> z <span class="fu">=</span> <span class="dt">ListZipper</span> [<span class="dv">2</span>, <span class="dv">1</span>] <span class="dv">3</span> [<span class="dv">4</span>]
+
+<span class="fu">&gt;</span> z
+<span class="fu">|</span> <span class="dv">1</span> <span class="fu">|</span> <span class="dv">2</span> <span class="fu">&gt;</span> <span class="dv">3</span> <span class="fu">&lt;</span> <span class="dv">4</span> <span class="fu">|</span>
+
+<span class="fu">&gt;</span> extract z
+<span class="dv">3</span></code></pre></div>
+<p>I’ll take some license with the <code>Show</code> instance to demonstrate <code>duplicate</code>:</p>
+<pre><code>&gt; duplicate z
+||  &gt;1&lt;2|3|4| || |1&gt;2&lt;3|4| &gt;&gt; |1|2&gt;3&lt;4| &lt;&lt; |1|2|3&gt;4&lt; ||</code></pre>
+<p>For <code>extend</code>, it’s time to break out some graphs.</p>
+<p>Just say we have some list zipper, <code>z</code>:</p>
+<div class="figure">
+<img src="/images/comonad-graph1.png" />
+
+</div>
+<p>The focus is unspecified, but it’s not going to change throughout these examples.</p>
+<p>Given a function that finds the greatest value to the left of the focus:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Safe</span> (maximumDef)
+
+<span class="ot">latch ::</span> <span class="dt">Ord</span> a <span class="ot">=&gt;</span> <span class="dt">Zipper</span> a <span class="ot">-&gt;</span> a
+latch (<span class="dt">Zipper</span> l f _) <span class="fu">=</span>
+  maximumDef f l</code></pre></div>
+<p>we can create a list zipper of the highest values as seen when moving from left to right through the zipper:</p>
+<div class="figure">
+<img src="/images/comonad-graph2.png" />
+
+</div>
+<p>Given a function to determine if the focus is greater than both of its immediate neighbours:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Safe</span> (headDef)
+
+<span class="ot">peak ::</span> <span class="dt">Ord</span> a <span class="ot">=&gt;</span> <span class="dt">Zipper</span> a <span class="ot">-&gt;</span> <span class="dt">Bool</span>
+peak (<span class="dt">Zipper</span> l f r) <span class="fu">=</span>
+  headDef f l <span class="fu">&lt;</span> f <span class="fu">&amp;&amp;</span> f <span class="fu">&gt;</span> headDef f r</code></pre></div>
+<p>we can find all of the points which are greater than their neighbours:</p>
+<div class="figure">
+<img src="/images/comonad-graph3.png" />
+
+</div>
+<p>Given a function to find the average value with a certain distance of the focus:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">wma ::</span>  <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Zipper</span> <span class="dt">Double</span> <span class="ot">-&gt;</span> <span class="dt">Double</span>
+wma n (<span class="dt">Zipper</span> l f r) <span class="fu">=</span>
+  average <span class="fu">$</span> take n l <span class="fu">++</span> f <span class="fu">:</span> take n r</code></pre></div>
+<p>we can find the windowed moving average of the entire list zipper:</p>
+<div class="figure">
+<img src="/images/comonad-graph4.png" />
+
+</div>
+<p>We can also compose these functions:</p>
+<div class="figure">
+<img src="/images/comonad-graph5.png" />
+
+</div>
+<h2 id="conclusion">Conclusion</h2>
+<p>Aside from the fact that there’s a comonad behind every zipper (which you can read more about <a href="http://www.ioc.ee/~tarmo/tsem05/uustalu0812-slides.pdf">here (PDF)</a> and <a href="http://stackoverflow.com/questions/25554062/zipper-comonads-generically?lq=1">here</a>), there’s quite a bit more to say about the humble list zipper on it’s own, but that will be the topic of a future series of posts…</p>]]></summary>
+</entry>
+<entry>
     <title>Free for DSLs, cofree for interpreters</title>
     <link href="http://dlaing.org/cofun/posts/free_and_cofree.html" />
     <id>http://dlaing.org/cofun/posts/free_and_cofree.html</id>
@@ -158,7 +300,7 @@ interpret limit count a <span class="fu">=</span> <span class="kw">do</span>
 <p>We can encapsulate the recursion with things like <code>iter</code>, <code>iterT</code> and <code>iterTM</code>, and I’ve written <code>iterTTM</code> in the accompanying to show how that works in this case.</p>
 <p>That’s fine, but I think we can do better.</p>
 <h2 id="cofree">Cofree</h2>
-<p>If you’re not familiar with comonads, I highly recommend another of Gabriel Gonzalez’s <a href="http://www.haskellforall.com/2013/02/you-could-have-invented-comonads.html">posts</a>. I’m also writing something based on the rushed explanation I gave in my talk, and will add a link here once it is ready.</p>
+<p>If you’re not familiar with comonads, I highly recommend another of Gabriel Gonzalez’s <a href="http://www.haskellforall.com/2013/02/you-could-have-invented-comonads.html">posts</a>. I’ve also written <a href="/posts/comonads.html">this</a> based on the rushed explanation I gave in my talk, but you should read Gabriel’s post instead.</p>
 <p>We won’t need much familiarity with comonads now, but it’ll probably come in handy for subsequent posts.</p>
 <p>Where <code>Free</code> was a sum type, <code>Cofree</code> is the product type:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Cofree</span> f a <span class="fu">=</span> a <span class="fu">:&lt;</span> f (<span class="dt">Cofree</span> f a)</code></pre></div>
