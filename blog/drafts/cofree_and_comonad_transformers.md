@@ -15,8 +15,8 @@ coAdd :: (Int, Int) -> Int -> (Bool, (Int, Int))
 coAdd (limit, count) x = (test, (limit, next))
   where
     count' = count + x
-    test = count' <= limit
-    next = if test then count' else count
+    test   = count' <= limit
+    next   = if test then count' else count
 
 coClear :: (Int, Int) -> (Int, Int)
 coClear (limit, _) = (limit, 0)
@@ -27,15 +27,15 @@ coTotal (limit, count) = (count, (limit, count))
 mkCoAdder :: Int -> Int -> CoAdder (Int, Int)
 mkCoAdder limit count = coiter next start
   where
-    next = CoAdderF <$> coAdd <*> coClear <*> coTotal
+    next  = CoAdderF <$> coAdd <*> coClear <*> coTotal
     start = (limit, count)
 ```
 
-There are a few different things going on here.
+There are a things we can clean up in here.
 
 # Cleaning up with comonad transformers
 
-There are two parts to what we're doing that we can factor out so that we don't have to manage them ourselves.
+There are two parts to what we're doing that we can factor out, so that we don't have to manage them ourselves.
 
 We are making use of `count` as a kind of state.
 If we were working in a monadic context, we'd reach for eitehr the `State` monad or `StateT` monad transformer.
@@ -43,6 +43,7 @@ The comonad transformer equivalent is `Store/StoreT`.
 
 We are making use of the `limit` as a kind of environment.
 Where a monadic version of the code would use `Reader/ReaderT`, the comonadic version will use `Env/EnvT`.
+
 
 ```haskell
 class MonadTrans t where
@@ -145,7 +146,8 @@ I lean slightly towards working with `mtl` style transformers, since I like the 
 
 Anyhow.
 
-What we have so far demonstrates `transformers` style comonad transformers.  It might be instructive to show off the differences between that and `mtl` style comonad transformers.
+What we have so far demonstrates `transformers` style comonad transformers.
+It's worth showing off the differences between that and `mtl` style comonad transformers.
 
 The cases for `coClear` and `coTotal` don't change except for the type signatures, since `StoreT` is at the top of our stack.
 ```haskell
@@ -156,7 +158,8 @@ coTotal :: ComonadStore Int w => w a -> (Int, w a)
 coTotal w = (pos w, w)
 ```
 
-For `coAdd` we make a similar change to the type signature, and we drop the explicit `lower`, since the `ComonadEnv` constraint makes `ask` available to us no matter where it is in the stack
+For `coAdd` we make a similar change to the type signature.
+We also drop the explicit `lower`, since the `ComonadEnv` constraint makes `ask` available to us no matter where it is in the stack:
 ```haskell
 coAdd :: (ComonadEnv Int w, ComonadStore Int w) => w a -> Int -> (Bool, w a)
 coAdd w x = (test, seek next w)
@@ -198,4 +201,6 @@ will work without adjustments.
 
 # Conclusion
 
-We've now factored out the state and evnironment from the interpreter, but there are still aspects of both the DSL and the interpreter which are more strongly coupled than they need to be.
+We've now factored out the state and environment from the interpreter, but there are still aspects of both the DSL and the interpreter which are more strongly coupled than they need to be.
+
+We'll start to deal with this in the next post, where we'll use coproducts to break out the orthogonal parts of the the DSL and products to make a similar change to the interpreter.

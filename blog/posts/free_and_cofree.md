@@ -214,7 +214,7 @@ That's fine, but I think we can do better.
 ## Cofree
 
 If you're not familiar with comonads, I highly recommend another of Gabriel Gonzalez's [posts](http://www.haskellforall.com/2013/02/you-could-have-invented-comonads.html).
-I'm also writing something based on the rushed explanation I gave in my talk, and will add a link here once it is ready.
+I've also written [this](/posts/comonads.html) based on the rushed explanation I gave in my talk, but you should read Gabriel's post instead.
 
 We won't need much familiarity with comonads now, but it'll probably come in handy for subsequent posts.
 
