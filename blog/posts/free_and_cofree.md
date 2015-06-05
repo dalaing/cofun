@@ -478,3 +478,5 @@ We can bring some other effects into the mix.
 This will allows us to interact with our interpreter from the console, and to connect our DSL to our interpreter over the network.
 
 There's a lot more in the queue, but comonad transformers, coproducts/products, and working with additional effects should make a pretty good start.
+
+[Questions? Comments?](http://www.reddit.com/r/haskell/comments/385b3k/free_and_cofree/)
