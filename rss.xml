@@ -117,7 +117,7 @@ findLimit&#39; <span class="fu">=</span> <span class="kw">do</span>
     <span class="co">-- and continue</span>
     findLimit&#39;</code></pre></div>
 <p>This is a good example of using <code>lift</code> to build up the values in a monad stack and using the various domain specific functions to help interpret them.</p>
-<p>Inside of <code>findLimit</code>, We can make use of <code>modify</code> because <code>StateT</code> is on top of the stack.</p>
+<p>Inside of <code>findLimit</code>, we can make use of <code>modify</code> because <code>StateT</code> is on top of the stack.</p>
 <p>If we remember the type of <code>add</code>:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">add ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Adder</span> <span class="dt">Bool</span></code></pre></div>
 <p>we can see that it’s not going to work in the <code>StateT Int Adder</code> stack that <code>findLimit'</code> is expecting.</p>
