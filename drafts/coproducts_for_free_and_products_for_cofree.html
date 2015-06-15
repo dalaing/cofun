@@ -1,0 +1,162 @@
+<!DOCTYPE html> 
+<html lang="en">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Dave Laing - Coproducts for free, and products for cofree</title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap-theme.min.css">
+        <link rel="stylesheet" href="../css/custom.css">
+        <link rel="stylesheet" href="../css/syntax.css">
+        <link rel="alternate" type="application/atom+xml" title="Atom - Cofun with cofree comonads" href="../atom.xml" />
+        <link rel="alternate" type="application/rss+xml" title="RSS - Cofun with cofree comonads" href="../rss.xml" />
+    </head>
+    <body>
+        <nav class="navbar navbar-default navbar-static-top">
+        <div class="container">
+        <div class="navbar-header">
+            <div class="navbar-brand">
+                <a href="../">Cofun with cofree comonads</a>
+            </div>
+            <ul class="nav navbar-nav">
+                <li role="presentation"><a href="http://dlaing.org">Back to my main site</a></li>
+            </ul>
+        </div>
+
+        </div>
+        </nav>
+
+        <div class="container">
+            <div class="panel panel-default">
+    <div class="panel-heading">
+        <h3 class="panel-title"><a href="../drafts/coproducts_for_free_and_products_for_cofree.html">Coproducts for free, and products for cofree</a></h3>
+    </div>
+    <div class="panel-body">
+        <h1 id="coproducts-for-free-monads">Coproducts for free monads</h1>
+<p>The underlying functor for our DSL is</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">AdderF</span> k <span class="fu">=</span>
+    <span class="dt">Add</span> <span class="dt">Int</span> (<span class="dt">Bool</span> <span class="ot">-&gt;</span> k)
+  <span class="fu">|</span> <span class="dt">Clear</span> k
+  <span class="fu">|</span> <span class="dt">Total</span> (<span class="dt">Int</span> <span class="ot">-&gt;</span> k)</code></pre></div>
+<p>You might have noticed that these are independent of one another as far as the functor instance and the free monad go. Or you might have read <a href="http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.101.4131">Datatypes a la carte</a>.</p>
+<p>As an aside, if you haven’t read ‘Datatypes a la carte’ before you should give it a go. It’s really well written, and if you’ve followed up to this point then you’re probably ready for it. I tried to read it very early on in my Haskell journey and ended up slowly backing away, but I’m glad I doubled back around to it eventually.</p>
+<p>You can break the independent parts out</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">AddF</span> k <span class="fu">=</span> <span class="dt">Add</span> <span class="dt">Int</span> (<span class="dt">Bool</span> <span class="ot">-&gt;</span> k)
+
+<span class="kw">data</span> <span class="dt">ClearF</span> k <span class="fu">=</span> <span class="dt">Clear</span> k
+
+<span class="kw">data</span> <span class="dt">TotalF</span> k <span class="fu">=</span> <span class="dt">Total</span> (<span class="dt">Int</span> <span class="ot">-&gt;</span> k)</code></pre></div>
+<p>and you can write functor instances for these</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Functor</span> <span class="dt">AddF</span> <span class="kw">where</span>
+  fmap f (<span class="dt">Add</span> x k) <span class="fu">=</span> <span class="dt">Add</span> x (f <span class="fu">.</span> k)
+
+<span class="kw">instance</span> <span class="dt">Functor</span> <span class="dt">ClearF</span> <span class="kw">where</span>
+  fmap f (<span class="dt">Clear</span> k) <span class="fu">=</span> <span class="dt">Clear</span> (f k)
+
+<span class="kw">instance</span> <span class="dt">Functor</span> <span class="dt">TotalF</span> <span class="kw">where</span>
+  fmap f (<span class="dt">Total</span> k) <span class="fu">=</span> <span class="dt">Total</span> (f <span class="fu">.</span> k)</code></pre></div>
+<p>Using the <code>Sum</code> functor, we can recover the old <code>AdderF</code>. <a href="https://hackage.haskell.org/package/transformers/docs/Data-Functor-Sum.html">Sum</a> comes from <code>transformers</code>, and makes a <code>Functor</code> from the sum of two <code>Functors</code>.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">{-# LANGUAGE TypeOperatoes #-}</span>
+
+<span class="co">-- we introduce a type operator to match &quot;Datatypes a la carte&quot;</span>
+<span class="kw">type</span> f <span class="fu">:+:</span> g <span class="fu">=</span> <span class="dt">Sum</span> f g
+
+<span class="kw">type</span> <span class="dt">AdderF</span> <span class="fu">=</span> <span class="dt">AddF</span> <span class="fu">:+:</span> <span class="dt">ClearF</span> <span class="fu">:+:</span> <span class="dt">TotalF</span></code></pre></div>
+<p>And, with some help from the typeclass machinery introduced in “Datatypes a la carte”, we can make our combinators more flexible.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"></code></pre></div>
+<p>TODO explain why this is good / useful</p>
+<p>This works with <code>findLimit</code></p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"></code></pre></div>
+<p>but we can make that more flexible as well.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"></code></pre></div>
+<h1 id="products-for-cofree-comonads">Products for cofree comonads</h1>
+<p>Recall that we had an underlying functor for our interpreter</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">CoAdderF</span> k <span class="fu">=</span> <span class="dt">CoAdderF</span> {
+<span class="ot">    addH   ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> (<span class="dt">Bool</span>,k)
+  ,<span class="ot"> clearH ::</span> k
+  ,<span class="ot"> totalH ::</span> (<span class="dt">Int</span>,k)
+  }</code></pre></div>
+<p>and a pairing between our DSL and interpreter functors</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Pairing</span> <span class="dt">CoAdderF</span> <span class="dt">AdderF</span> <span class="kw">where</span>
+  pair f (<span class="dt">CoAdderF</span> a _ _) (<span class="dt">Add</span> x k) <span class="fu">=</span> pair f (a x) k
+  pair f (<span class="dt">CoAdderF</span> _ c _) (<span class="dt">Clear</span> k) <span class="fu">=</span> f c k
+  pair f (<span class="dt">CoAdderF</span> _ _ t) (<span class="dt">Total</span> k) <span class="fu">=</span> pair f t k</code></pre></div>
+<p>We can factor those out into independent peices as well:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">CoAddF</span> k <span class="fu">=</span> <span class="dt">CoAdd</span> (<span class="dt">Int</span> <span class="ot">-&gt;</span> (<span class="dt">Bool</span>, k))
+
+<span class="kw">data</span> <span class="dt">CoClearF</span> k <span class="fu">=</span> <span class="dt">CoClear</span> k
+
+<span class="kw">data</span> <span class="dt">CoTotalF</span> k <span class="fu">=</span> <span class="dt">CoTotal</span> (<span class="dt">Int</span>, k)</code></pre></div>
+<p>and provide the <code>Functor</code> instances:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Functor</span> <span class="dt">CoAddF</span> <span class="kw">where</span>
+  fmap f (<span class="dt">CoAdd</span> a) <span class="fu">=</span> <span class="dt">CoAdd</span> (fmap (fmap f) a)
+
+<span class="kw">instance</span> <span class="dt">Functor</span> <span class="dt">CoClearF</span> <span class="kw">where</span>
+  fmap f (<span class="dt">CoClear</span> k) <span class="fu">=</span> <span class="dt">CoClear</span> (f k)
+
+<span class="kw">instance</span> <span class="dt">Functor</span> <span class="dt">CoTotalF</span> <span class="kw">where</span>
+    fmap f (<span class="dt">CoTotal</span> t) <span class="fu">=</span> <span class="dt">CoTotal</span> (fmap f t)</code></pre></div>
+<p>In the same way that we used the <code>Sum</code> functor for the DSL, we can use the <code>Product</code> functor to recover the old <code>CoAdderF</code>.</p>
+<p><a href="https://hackage.haskell.org/package/transformers/docs/Data-Functor-Product.html">Product</a> comes from <code>transformers</code>, and makes a <code>Functor</code> from the product of two <code>Functors</code>.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">{-# LANGUAGE TypeOperatoes #-}</span>
+
+<span class="co">-- we introduce a type operator to match &quot;Datatypes a la carte&quot;</span>
+<span class="kw">type</span> f <span class="fu">:*:</span> g <span class="fu">=</span> <span class="dt">Product</span> f g
+
+<span class="kw">type</span> <span class="dt">CoAdderF</span> <span class="fu">=</span> <span class="dt">CoAddF</span> <span class="fu">:*:</span> <span class="dt">CoClearF</span> <span class="fu">:*:</span> <span class="dt">CoTotalF</span></code></pre></div>
+<p>TODO mkCoAdder</p>
+<p>TODO explain cross talk via underlying transformers</p>
+<h1 id="pairing-coproducts-and-products">Pairing coproducts and products</h1>
+<p>There are pairings between <code>Sum</code> and <code>Product</code> functors if there are pairings between their components</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> (<span class="dt">Pairing</span> f f', <span class="dt">Pairing</span> g g') <span class="ot">=&gt;</span> <span class="dt">Pairing</span> (f <span class="fu">:+:</span> g) (f' <span class="fu">:*:</span> g') <span class="kw">where</span>
+  pair p (<span class="dt">LeftF</span> x) (a <span class="fu">:*:</span> _) <span class="fu">=</span> pair p x a
+  pair p (<span class="dt">RightF</span> x) (_ <span class="fu">:*:</span> b) <span class="fu">=</span> pair p x b
+
+<span class="kw">instance</span> (<span class="dt">Pairing</span> f f', <span class="dt">Pairing</span> g g') <span class="ot">=&gt;</span> <span class="dt">Pairing</span> (f <span class="fu">:*:</span> g) (f' <span class="fu">:+:</span> g') <span class="kw">where</span>
+  pair p (a <span class="fu">:*:</span> _) (<span class="dt">LeftF</span> x) <span class="fu">=</span> pair p a x
+  pair p (_ <span class="fu">:*:</span> b) (<span class="dt">RightF</span> x) <span class="fu">=</span> pair p b x</code></pre></div>
+<p>This means that we only need to provide pairings between the corresponding functors from the DSL and interpreter functors, and we’ll be back to where we were:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Pairing</span> <span class="dt">CoAddF</span> <span class="dt">AddF</span> <span class="kw">where</span>
+  pair f (<span class="dt">CoAdd</span> a) (<span class="dt">Add</span> x k) <span class="fu">=</span> pair f (a x) k
+
+<span class="kw">instance</span> <span class="dt">Pairing</span> <span class="dt">CoClearF</span> <span class="dt">ClearF</span> <span class="kw">where</span>
+  pair f (<span class="dt">CoClear</span> c) (<span class="dt">Clear</span> k) <span class="fu">=</span> f c k
+
+<span class="kw">instance</span> <span class="dt">Pairing</span> <span class="dt">CoTotalF</span> <span class="dt">TotalF</span> <span class="kw">where</span>
+    pair f (<span class="dt">CoTotal</span> t) (<span class="dt">Total</span> k) <span class="fu">=</span> pair f t k</code></pre></div>
+<h1 id="conclusion">Conclusion</h1>
+<p>TODO why this is good</p>
+<p>TODO opens the door to good things, allows a lighter touch, networking related results coming soon</p>
+<p>TODO at end - can we use products in a meaningful way in free? timing and auth? - can we use compose and friends to make things interestings?</p>
+    </div>
+    
+    <div class="panel-footer">
+        <h5>Posted on May 25, 2015 </h5>
+    </div>
+    
+</div>
+
+            <div class="row">
+                <div class="col-md-5"> Site proudly generated by <a href="http://jaspervdj.be/hakyll">Hakyll</a> </div>
+                <div class="col-md-7">
+                    This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>
+                    <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-59162164-1', 'auto');
+  ga('send', 'pageview');
+</script>
+
+    </body>
+</html>
