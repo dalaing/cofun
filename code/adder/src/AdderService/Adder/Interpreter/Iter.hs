@@ -1,35 +1,22 @@
-module AdderService.Adder.Interpreter (
+module AdderService.Adder.Interpreter.Iter (
     interpret
-  , interpret'
   ) where
 
 import           AdderService.Adder        (AdderT)
 import           AdderService.Functors     (AdderF (..))
 
+import           Control.Monad.Trans.Free  (FreeF (..), FreeT (..))
+
 import           Control.Monad.Reader      (ReaderT, ask, runReaderT)
 import           Control.Monad.State       (StateT, evalStateT, get, put)
 import           Control.Monad.Trans.Class (MonadTrans, lift)
-import           Control.Monad.Trans.Free  (FreeF (..), FreeT (..), runFreeT)
 
 type Limit = Int
 type Count = Int
 
-interpret :: Monad m => Limit -> Count -> AdderT m r -> m r
-interpret limit count a = do
-  mr <- runFreeT a
-  case mr of
-   Pure r -> return r
-   Free (Add x k) -> do
-     let count' = x + count
-     let test = count' <= limit
-     let next = if test then count' else count
-     interpret limit next (k test)
-   Free (Clear k) ->
-     interpret limit 0 k
-   Free (Total k) ->
-     interpret limit count (k count)
+type Base m = ReaderT Limit (StateT Count m)
 
-step :: Monad m => AdderF (ReaderT Int (StateT Int m) r) -> ReaderT Int (StateT Int m) r
+step :: Monad m => AdderF (Base m r) -> Base m r
 step (Add x k) = do
   limit <- ask
   count <- lift get
@@ -52,7 +39,7 @@ iterTTM f (FreeT m) = do
         Pure x -> return x
         Free y -> f y
 
-interpret' :: Monad m => Limit -> Count -> AdderT m r -> m r
-interpret' limit count = flip evalStateT count .
+interpret :: Monad m => Int -> Int -> AdderT m r -> m r
+interpret limit count = flip evalStateT count .
                          flip runReaderT limit .
                          iterTTM step
