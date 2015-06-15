@@ -158,7 +158,7 @@ findLimit' <span class="fu">=</span> <span class="kw">do</span>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">newtype</span> <span class="dt">Reader</span> r a <span class="fu">=</span> <span class="dt">Reader</span> {<span class="ot"> runReader ::</span> r <span class="ot">-&gt;</span> a }</code></pre></div>
 <p>and we use <code>runReader</code> to interpret a <code>Reader</code> monad value once we’re done building it up.</p>
 <p>The <code>MonadReader r</code> typeclass captures the <code>Reader</code> specific functions, although for this post we’ll only be making us of <code>ask</code>:</p>
-<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">ask ::</span> <span class="dt">Reader</span> r</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">ask ::</span> <span class="dt">Reader</span> r r </code></pre></div>
 <p>which returns the environment value.</p>
 <p>Just like with <code>State</code>, we can make use of <code>Reader</code> in a monad transformer stack with <code>ReaderT</code>:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">newtype</span> <span class="dt">ReaderT</span> r m a <span class="fu">=</span> <span class="dt">Reader</span> {<span class="ot"> runReaderT ::</span> r <span class="ot">-&gt;</span> m a }
