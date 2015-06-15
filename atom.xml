@@ -283,20 +283,22 @@ findLimit&#39; <span class="fu">=</span> <span class="kw">do</span>
     findLimit&#39;</code></pre></div>
 <h3 id="ad-hoc-interpretation-of-our-free-monad">Ad-hoc interpretation of our free monad</h3>
 <p>At this point, some folks would build an interpreter for their DSL that may look a little like this:</p>
-<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">interpret ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> <span class="dt">Limit</span> <span class="ot">-&gt;</span> <span class="dt">Count</span> <span class="ot">-&gt;</span> <span class="dt">AdderT</span> m r <span class="ot">-&gt;</span> m r
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">interpret ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">AdderT</span> m r <span class="ot">-&gt;</span> m r
 interpret limit count a <span class="fu">=</span> <span class="kw">do</span>
   mr <span class="ot">&lt;-</span> runFreeT a
   <span class="kw">case</span> mr <span class="kw">of</span>
-   <span class="dt">Pure</span> r <span class="ot">-&gt;</span> return r
-   <span class="dt">Free</span> (<span class="dt">Add</span> x k) <span class="ot">-&gt;</span> <span class="kw">do</span>
-     <span class="kw">let</span> count&#39; <span class="fu">=</span> x <span class="fu">+</span> count
-     <span class="kw">let</span> test <span class="fu">=</span> count&#39; <span class="fu">&lt;=</span> limit
-     <span class="kw">let</span> next <span class="fu">=</span> <span class="kw">if</span> test <span class="kw">then</span> count&#39; <span class="kw">else</span> count
-     interpret limit next (k test)
-   <span class="dt">Free</span> (<span class="dt">Clear</span> k) <span class="ot">-&gt;</span>
-     interpret limit <span class="dv">0</span> k
-   <span class="dt">Free</span> (<span class="dt">Total</span> k) <span class="ot">-&gt;</span>
-     interpret limit count (k count)</code></pre></div>
+    <span class="dt">Pure</span> r <span class="ot">-&gt;</span> return r
+    <span class="dt">Free</span> (<span class="dt">Add</span> x k) <span class="ot">-&gt;</span>
+      <span class="kw">let</span>
+        count&#39; <span class="fu">=</span> x <span class="fu">+</span> count
+        test <span class="fu">=</span> count&#39; <span class="fu">&lt;=</span> limit
+        next <span class="fu">=</span> <span class="kw">if</span> test <span class="kw">then</span> count&#39; <span class="kw">else</span> count
+      <span class="kw">in</span>
+        interpret limit next (k test)
+    <span class="dt">Free</span> (<span class="dt">Clear</span> k) <span class="ot">-&gt;</span>
+      interpret limit <span class="dv">0</span> k
+    <span class="dt">Free</span> (<span class="dt">Total</span> k) <span class="ot">-&gt;</span>
+      interpret limit count (k count)</code></pre></div>
 <p>We can encapsulate the recursion with things like <code>iter</code>, <code>iterT</code> and <code>iterTM</code>, and I’ve written <code>iterTTM</code> in the accompanying to show how that works in this case.</p>
 <p>That’s fine, but I think we can do better.</p>
 <h2 id="cofree">Cofree</h2>

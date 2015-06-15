@@ -1,0 +1,145 @@
+<!DOCTYPE html> 
+<html lang="en">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Dave Laing - monad_transformers</title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap-theme.min.css">
+        <link rel="stylesheet" href="../css/custom.css">
+        <link rel="stylesheet" href="../css/syntax.css">
+        <link rel="alternate" type="application/atom+xml" title="Atom - Cofun with cofree comonads" href="../atom.xml" />
+        <link rel="alternate" type="application/rss+xml" title="RSS - Cofun with cofree comonads" href="../rss.xml" />
+    </head>
+    <body>
+        <nav class="navbar navbar-default navbar-static-top">
+        <div class="container">
+        <div class="navbar-header">
+            <div class="navbar-brand">
+                <a href="../">Cofun with cofree comonads</a>
+            </div>
+            <ul class="nav navbar-nav">
+                <li role="presentation"><a href="http://dlaing.org">Back to my main site</a></li>
+            </ul>
+        </div>
+
+        </div>
+        </nav>
+
+        <div class="container">
+            <div class="panel panel-default">
+    <div class="panel-heading">
+        <h3 class="panel-title"><a href="../drafts/monad_transformers.html">monad_transformers</a></h3>
+    </div>
+    <div class="panel-body">
+        <p>We could also write a version that imposes a limit on how many times <code>add</code> is called.</p>
+<p>TODO finish off this code</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Base</span> m a <span class="fu">=</span> <span class="dt">ReaderT</span> <span class="dt">Int</span> (<span class="dt">StateT</span> <span class="dt">Int</span> (<span class="dt">ReaderT</span> <span class="dt">Int</span> (<span class="dt">StateT</span> <span class="dt">Int</span> m))) a
+
+<span class="ot">interpret' ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> <span class="dt">AdderT</span> <span class="dt">Base</span> m r <span class="ot">-&gt;</span> <span class="dt">Base</span> m r
+interpret' a <span class="fu">=</span> <span class="kw">do</span>
+  mr <span class="ot">&lt;-</span> runFreeT a
+  <span class="kw">case</span> mr <span class="kw">of</span>
+   <span class="dt">Pure</span> r <span class="ot">-&gt;</span> return r
+   <span class="dt">Free</span> (<span class="dt">Add</span> x k) <span class="ot">-&gt;</span> <span class="kw">do</span>
+     limitCall <span class="ot">&lt;-</span> lift <span class="fu">.</span> lift <span class="fu">.</span> ask
+     countCall <span class="ot">&lt;-</span> lift <span class="fu">.</span> lift <span class="fu">.</span> lift <span class="fu">.</span> get
+     <span class="kw">if</span> (limitCall <span class="fu">&lt;=</span> countCall)
+     <span class="kw">then</span>
+       interpret' (k <span class="dt">False</span>)
+     <span class="kw">else</span> <span class="kw">do</span>
+       limit <span class="ot">&lt;-</span> ask
+       count <span class="ot">&lt;-</span> lift <span class="fu">.</span> get
+       <span class="kw">let</span> count' <span class="fu">=</span> x <span class="fu">+</span> count
+       <span class="kw">let</span> test   <span class="fu">=</span> count' <span class="fu">&lt;=</span> limit
+       <span class="kw">let</span> next   <span class="fu">=</span> <span class="kw">if</span> test <span class="kw">then</span> count' <span class="kw">else</span> count
+       lift <span class="fu">.</span> put <span class="fu">$</span> next
+       interpret' (k test)
+   <span class="dt">Free</span> (<span class="dt">Clear</span> k) <span class="ot">-&gt;</span> <span class="kw">do</span>
+     lift <span class="fu">.</span> put <span class="fu">$</span> <span class="dv">0</span>
+     interpret' k
+   <span class="dt">Free</span> (<span class="dt">Total</span> k) <span class="ot">-&gt;</span> <span class="kw">do</span>
+     count <span class="ot">&lt;-</span> lift <span class="fu">.</span> get
+     interpret' (k count)
+
+<span class="ot">runBase ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Base</span> m r <span class="ot">-&gt;</span> m r
+runBase limitValue countValue limitCall countCall <span class="fu">=</span>
+  flip runStateT countCall <span class="fu">.</span>
+  flip runReaderT limitCall <span class="fu">.</span>
+  flip runStateT countValue <span class="fu">.</span>
+  flip runReaderT limitValue
+
+<span class="ot">interpret ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">AdderT</span> <span class="dt">Base</span> m r <span class="ot">-&gt;</span> m r
+interpret limitValue countValue limitCall countCall <span class="fu">=</span>
+  runBase limitValue countValue limitCall countCall <span class="fu">.</span>
+  interpret'</code></pre></div>
+<p>With <code>mtl</code> you can’t have multiple transformers of the same type, but you can write code that is decoupled from the concrete stack you end up using.</p>
+<p>This is what it looks like:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">interpret' ::</span> (<span class="dt">MonadReader</span> <span class="dt">Int</span> m, <span class="dt">MonadState</span> <span class="dt">Int</span> m) <span class="ot">=&gt;</span> <span class="dt">AdderT</span> m r <span class="ot">-&gt;</span> m r
+interpret' a <span class="fu">=</span> <span class="kw">do</span>
+  mr <span class="ot">&lt;-</span> runFreeT a
+  <span class="kw">case</span> mr <span class="kw">of</span>
+   <span class="dt">Pure</span> r <span class="ot">-&gt;</span> return r
+   <span class="dt">Free</span> (<span class="dt">Add</span> x k) <span class="ot">-&gt;</span> <span class="kw">do</span>
+     limit <span class="ot">&lt;-</span> ask
+     count <span class="ot">&lt;-</span> get
+     <span class="kw">let</span> count' <span class="fu">=</span> x <span class="fu">+</span> count
+     <span class="kw">let</span> test   <span class="fu">=</span> count' <span class="fu">&lt;=</span> limit
+     <span class="kw">let</span> next   <span class="fu">=</span> <span class="kw">if</span> test <span class="kw">then</span> count' <span class="kw">else</span> count
+     put next
+     interpret' (k test)
+   <span class="dt">Free</span> (<span class="dt">Clear</span> k) <span class="ot">-&gt;</span> <span class="kw">do</span>
+     put <span class="dv">0</span>
+     interpret' k
+   <span class="dt">Free</span> (<span class="dt">Total</span> k) <span class="ot">-&gt;</span> <span class="kw">do</span>
+     count <span class="ot">&lt;-</span> get
+     interpret' (k count)</code></pre></div>
+<p>We’re using typeclass constraints to assert that the required functionality is in the monad transformer stack. We then use the functionality - <code>ask</code>, <code>get</code>, and <code>put</code> - directly.</p>
+<p>This means we can change the order of the transformers in the stack without having to change <code>interpret'</code></p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">interpret1 ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">AdderT</span> (<span class="dt">ReaderT</span> <span class="dt">Int</span> (<span class="dt">StateT</span> <span class="dt">Int</span> m)) r <span class="ot">-&gt;</span> m r
+interpret1 limit count <span class="fu">=</span>
+  flip runStateT count <span class="fu">.</span>
+  flip runReaderT limit <span class="fu">.</span>
+  interpret'
+
+<span class="ot">interpret2 ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">AdderT</span> (<span class="dt">StateT</span> <span class="dt">Int</span> (<span class="dt">ReaderT</span> <span class="dt">Int</span> m)) r <span class="ot">-&gt;</span> m r
+interpret2 limit count <span class="fu">=</span>
+  flip runReaderT limit <span class="fu">.</span>
+  flip runStateT count <span class="fu">.</span>
+  interpret'</code></pre></div>
+<p>It also means we can factor out bits of the functionality, and limit the constraints to just what is required for what we’re working on:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">clearCount ::</span> <span class="dt">MonadState</span> <span class="dt">Int</span> m <span class="ot">-&gt;</span> m ()
+clearCount <span class="fu">=</span> put <span class="dv">0</span></code></pre></div>
+<p>Limiting the scope can mean that we can reuse the functionality in more places, and that our code can’t make sneaky use of the other transformers in the stack.</p>
+<p>You can reap the same benefits from either style of monad transformer code by doing a little more work.</p>
+<p>You can get <code>mtl</code> style reuse of of <code>transfomers</code> style code by using either the <code>mmorph</code> TODO link library or <code>zoom</code> and <code>magnify</code> from <code>lens</code> TODO links to TODO</p>
+<p>You can have multiple components in your <code>mtl</code> style <code>State</code> and <code>Reader</code> stacks by using classy lenses.</p>
+<p>They’re all worth coming up to speed with, but going into further details on these is probably a post for another day.</p>
+    </div>
+    
+</div>
+
+            <div class="row">
+                <div class="col-md-5"> Site proudly generated by <a href="http://jaspervdj.be/hakyll">Hakyll</a> </div>
+                <div class="col-md-7">
+                    This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>
+                    <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-59162164-1', 'auto');
+  ga('send', 'pageview');
+</script>
+
+    </body>
+</html>

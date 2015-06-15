@@ -4,7 +4,7 @@
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Dave Laing - Cofree and comonad transformers</title>
+        <title>Dave Laing - Monad transformers and comonad transformers</title>
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap-theme.min.css">
         <link rel="stylesheet" href="../css/custom.css">
@@ -30,13 +30,36 @@
         <div class="container">
             <div class="panel panel-default">
     <div class="panel-heading">
-        <h3 class="panel-title"><a href="../drafts/cofree_and_comonad_transformers.html">Cofree and comonad transformers</a></h3>
+        <h3 class="panel-title"><a href="../drafts/cofree_and_comonad_transformers.html">Monad transformers and comonad transformers</a></h3>
     </div>
     <div class="panel-body">
         <h1 id="the-story-so-far">The story so far</h1>
 <p><a href="../posts/free_and_cofree.html">Previously</a> we put together a DSL using the free monad and a corresponding interpreter using the cofree comonad.</p>
-<p>Here is our code for the interpreter:</p>
-<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">CoAdder</span> <span class="fu">=</span> <span class="dt">Cofree</span> <span class="dt">CoAdderF</span>
+<p>We had an ad-hoc interpreter for our DSL:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">interpret ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">AdderT</span> m r <span class="ot">-&gt;</span> m r
+interpret limit count a <span class="fu">=</span> <span class="kw">do</span>
+  mr <span class="ot">&lt;-</span> runFreeT a
+  <span class="kw">case</span> mr <span class="kw">of</span>
+    <span class="dt">Pure</span> r <span class="ot">-&gt;</span> return r
+    <span class="dt">Free</span> (<span class="dt">Add</span> x k) <span class="ot">-&gt;</span>
+      <span class="kw">let</span>
+        count' <span class="fu">=</span> x <span class="fu">+</span> count
+        test <span class="fu">=</span> count' <span class="fu">&lt;=</span> limit
+        next <span class="fu">=</span> <span class="kw">if</span> test <span class="kw">then</span> count' <span class="kw">else</span> count
+      <span class="kw">in</span>
+        interpret limit next (k test)
+    <span class="dt">Free</span> (<span class="dt">Clear</span> k) <span class="ot">-&gt;</span>
+      interpret limit <span class="dv">0</span> k
+    <span class="dt">Free</span> (<span class="dt">Total</span> k) <span class="ot">-&gt;</span>
+      interpret limit count (k count)</code></pre></div>
+<p>We also had an interpreter based on the cofree comonad that corresponds to the DSL:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">CoAdder</span> a <span class="fu">=</span> <span class="dt">Cofree</span> <span class="dt">CoAdderF</span> a
+
+<span class="ot">mkCoAdder ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">CoAdder</span> (<span class="dt">Int</span>, <span class="dt">Int</span>)
+mkCoAdder limit count <span class="fu">=</span> coiter next start
+  <span class="kw">where</span>
+    next  <span class="fu">=</span> <span class="dt">CoAdderF</span> <span class="fu">&lt;$&gt;</span> coAdd <span class="fu">&lt;*&gt;</span> coClear <span class="fu">&lt;*&gt;</span> coTotal
+    start <span class="fu">=</span> (limit, count)
 
 <span class="ot">coAdd ::</span> (<span class="dt">Int</span>, <span class="dt">Int</span>) <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> (<span class="dt">Bool</span>, (<span class="dt">Int</span>, <span class="dt">Int</span>))
 coAdd (limit, count) x <span class="fu">=</span> (test, (limit, next))
@@ -49,56 +72,283 @@ coAdd (limit, count) x <span class="fu">=</span> (test, (limit, next))
 coClear (limit, _) <span class="fu">=</span> (limit, <span class="dv">0</span>)
 
 <span class="ot">coTotal ::</span> (<span class="dt">Int</span>, <span class="dt">Int</span>) <span class="ot">-&gt;</span> (<span class="dt">Int</span>, (<span class="dt">Int</span>, <span class="dt">Int</span>))
-coTotal (limit, count) <span class="fu">=</span> (count, (limit, count))
-
-<span class="ot">mkCoAdder ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">CoAdder</span> (<span class="dt">Int</span>, <span class="dt">Int</span>)
-mkCoAdder limit count <span class="fu">=</span> coiter next start
-  <span class="kw">where</span>
-    next  <span class="fu">=</span> <span class="dt">CoAdderF</span> <span class="fu">&lt;$&gt;</span> coAdd <span class="fu">&lt;*&gt;</span> coClear <span class="fu">&lt;*&gt;</span> coTotal
-    start <span class="fu">=</span> (limit, count)</code></pre></div>
-<p>It’ll work, but we can clean it up with comonad transformers.</p>
+coTotal (limit, count) <span class="fu">=</span> (count, (limit, count))</code></pre></div>
+<p>Both of these work, but we can do better. The ad-hoc interpreter can be cleaned up by using monad transformers. It should be unsurprising - especially given the title of this post - that we can clean up the cofree comonad version of the interpreter using comonad transformers.</p>
 <h1 id="a-monad-transformers-refresher">A monad transformers refresher</h1>
-<p>If you’re comfortable with monad transformers you can skip this. If you’re not yet comfortable with monad transformers, this probably won’t help much, but I’ll at least put in a token effort.</p>
+<p>If you’re comfortable with monad transformers you can skip this. If you’re not yet comfortable with monad transformers this probably won’t help much.</p>
+<p>A few people have found these links helpful:</p>
+<ul>
+<li><a href="http://www.cs.virginia.edu/~wh5a/personal/Transformers.pdf">Monad Transformers Step by Step (PDF)</a></li>
+<li><a href="http://www.muitovar.com/monad/moncow.xhtml">The Greenhorn’s Guide to becoming a Monad Cowboy</a></li>
+</ul>
+<p>I’ll at least put in a token effort, and some of the examples and analogies will be reused when I get to comonad transformers, so it’s not all a waste.</p>
 <p>If you’ve ready my <a href="../posts/comonads.html">brief overview of comonads</a> you might recall my hand-wavy explanation of how monads are related to building up a value in a monadic context from a pure values.</p>
+<p>We might need to look at the <code>Monad</code> typeclass at the correct angle to see that.</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">class</span> <span class="dt">Monad</span> m <span class="kw">where</span>
 <span class="ot">  return    ::</span> a <span class="ot">-&gt;</span> m a
 <span class="ot">  bind      ::</span> (a <span class="ot">-&gt;</span> m b) <span class="ot">-&gt;</span> m a <span class="ot">-&gt;</span> m b</code></pre></div>
-<p>We can see that <code>return</code> does this directly. <code>bind</code> can be viewed as a way to build up the value in the monadic</p>
-<p>That pattern continues with <code>lift</code>, which is provided by <code>MonadTrans</code>:</p>
+<p>It shouldn’t be too much of stretch to see that <code>return</code> does this directly. If we think of <code>m a</code> as an intermediate step on the way to building up <code>m b</code>, <code>bind</code> can be viewed as a way to use a function from a pure value to a value in a monadic context to make that step.</p>
+<p>Throughtout all of this, we are working with a single <code>Monad</code>. We will often want to write code that deals with more than one monad at the same time.</p>
+<p>That is where monad transformers come into play. They “stack” monads on top of each other, via the <code>lift</code> function from the <code>MonadTrans</code> typeclass.</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">class</span> <span class="dt">MonadTrans</span> t <span class="kw">where</span>
-<span class="ot">  lift ::</span> w a <span class="ot">-&gt;</span> t w a</code></pre></div>
-<p>TODO StateT over Adder as example</p>
-<p>TODO description of State / StateT</p>
-<p>TODO descriptin of Reader / ReaderT</p>
-<h1 id="cleaning-up-with-comonad-transformers">Cleaning up with comonad transformers</h1>
-<p>TODO comonads are about going from values in a comonadic context to pure values TODO describe comonad typeclass to contrast with monads</p>
-<p>That pattern continues with <code>lower</code>, which is provided by <code>ComonadTrans</code>:</p>
+<span class="ot">  lift ::</span> m a <span class="ot">-&gt;</span> t m a</code></pre></div>
+<p>Every monad transformer is also a monad, so we’re again build up a value in a monadic context. Now we can use monadic values from lower in the “stack” to do so, by “lifting” them to the context of the monad transformer.</p>
+<p>This will probably make more sense after some examples.</p>
+<h2 id="state-and-statet"><code>State</code> and <code>StateT</code></h2>
+<p>The <code>State</code> monad abstracts functions that transform a state value of a given type. It is a <code>newtype</code> wrapper around a particular form of a state transformation function:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">newtype</span> <span class="dt">State</span> s a <span class="fu">=</span> <span class="dt">State</span> {<span class="ot"> runState ::</span> s <span class="ot">-&gt;</span> (a, s) }</code></pre></div>
+<p>The <code>newtype</code> is used so that we can provide a <code>Monad</code> instance. At least for me, it also helps me keep my types lining up nicely and prevents various late-night-coding-induced misbehaviours.</p>
+<p>We use return and bind to build up more involved state transformation functions, and we can use <code>get</code> / <code>put</code> / <code>modify</code> to query and manipulate the state in these functions:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">get ::</span> <span class="dt">State</span> s s
+<span class="ot">put ::</span> s <span class="ot">-&gt;</span> <span class="dt">State</span> s ()
+<span class="ot">modify ::</span> (s <span class="ot">-&gt;</span> s) <span class="ot">-&gt;</span> <span class="dt">State</span> s ()</code></pre></div>
+<p>These functions are captured in the <code>MonadState s</code> typeclass, which has instances available in all of the places that you’d expect.</p>
+<p>Once we’ve built up the state transformation functation that we want, we can use <code>runState</code> / <code>evalState</code> / <code>execState</code> as our interpreters, which run the state transformation function and provide either the return value, the final state, or both. Note that <code>evalState</code> and <code>execState</code> can both be defined in terms of <code>runState</code>.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">evalState ::</span> <span class="dt">State</span> s a <span class="ot">-&gt;</span> s <span class="ot">-&gt;</span> a
+<span class="ot">execState ::</span> <span class="dt">State</span> s a <span class="ot">-&gt;</span> s <span class="ot">-&gt;</span> s</code></pre></div>
+<p>Where <code>State</code> works for pure computations, <code>StateT</code> does the same for monadic computations for a particular monad <code>m</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">newtype</span> <span class="dt">StateT</span> s m a <span class="fu">=</span> <span class="dt">StateT</span> {<span class="ot"> runStateT ::</span> s <span class="ot">-&gt;</span> m (a, s) }
+
+<span class="ot">get ::</span> <span class="dt">StateT</span> s m s
+<span class="ot">put ::</span> s <span class="ot">-&gt;</span> <span class="dt">StateT</span> s m ()
+<span class="ot">modify ::</span> (s <span class="ot">-&gt;</span> s) <span class="ot">-&gt;</span> <span class="dt">StateT</span> s m ()
+
+<span class="ot">evalStateT ::</span> <span class="dt">StateT</span> s m a <span class="ot">-&gt;</span> s <span class="ot">-&gt;</span> m a
+<span class="ot">execStateT ::</span> <span class="dt">StateT</span> s m a <span class="ot">-&gt;</span> s <span class="ot">-&gt;</span> m s</code></pre></div>
+<p>We can write all of our code in terms of <code>StateT</code>, as we can use the <code>Identity</code> monad at the bottom of our stack to finish things off.</p>
+<p>In fact, we can define <code>State</code> in terms of <code>StateT</code> and <code>Identity</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">State</span> s <span class="fu">=</span> <span class="dt">StateT</span> s <span class="dt">Identity</span>
+
+<span class="ot">runState ::</span> <span class="dt">State</span> s <span class="ot">-&gt;</span> s <span class="ot">-&gt;</span> (a, s)
+runState sm <span class="fu">=</span> runIdentity <span class="fu">.</span> runStateT sm</code></pre></div>
+<h3 id="an-example">An example</h3>
+<p>We used <code>StateT</code> stacked on top of our <code>Adder</code> monad in the helper function for <code>findLimit</code> in the last post:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell">  <span class="co">-- in findLimit</span>
+  <span class="fu">...</span>
+  r <span class="ot">&lt;-</span> execStateT findLimit' <span class="dv">0</span>
+  <span class="fu">...</span>
+
+<span class="ot">findLimit' ::</span> <span class="dt">StateT</span> <span class="dt">Int</span> <span class="dt">Adder</span> ()
+findLimit' <span class="fu">=</span> <span class="kw">do</span>
+  <span class="co">-- add 1 to the total</span>
+  r <span class="ot">&lt;-</span> lift <span class="fu">$</span> add <span class="dv">1</span>
+  <span class="co">-- check for overflow</span>
+  when r <span class="fu">$</span> <span class="kw">do</span>
+    <span class="co">-- if no overflow, add to our state counter ...</span>
+    modify (<span class="fu">+</span> <span class="dv">1</span>)
+    <span class="co">-- and continue</span>
+    findLimit'</code></pre></div>
+<p>This is a good example of using <code>lift</code> to build up the values in a monad stack and using the various domain specific functions to help interpret them.</p>
+<p>Inside of <code>findLimit</code>, We can make use of <code>modify</code> because <code>StateT</code> is on top of the stack.</p>
+<p>If we remember the type of <code>add</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">add ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Adder</span> <span class="dt">Bool</span></code></pre></div>
+<p>we can see that it’s not going to work in the <code>StateT Int Adder</code> stack that <code>findLimit'</code> is expecting.</p>
+<p>However, <code>lift . add</code> has type</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell">lift <span class="fu">.</span><span class="ot"> add ::</span> <span class="dt">MonadTrans</span> t <span class="ot">=&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> t <span class="dt">Adder</span> <span class="dt">Bool</span></code></pre></div>
+<p>or in this case</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell">lift <span class="fu">.</span><span class="ot"> add ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">StateT</span> <span class="dt">Int</span> <span class="dt">Adder</span> <span class="dt">Bool</span></code></pre></div>
+<p>and so everything works out.</p>
+<p>While <code>findLimit'</code> has type</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="dt">StateT</span> <span class="dt">Int</span> <span class="dt">Adder</span> ()</code></pre></div>
+<p>we can see that <code>execStateT findLimit' (0 :: Int)</code> has type</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="dt">Adder</span> <span class="dt">Int</span></code></pre></div>
+<p>and so <code>execStateT</code> has allowed us to temporarily make use of an additional effect.</p>
+<h2 id="reader-and-readert"><code>Reader</code> and <code>ReaderT</code></h2>
+<p>The <code>Reader</code> monad abstracts functions that operate with a value of a given type as a context or environment. In this case it is a <code>newtype</code> wrapper around a simple function:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">newtype</span> <span class="dt">Reader</span> r a <span class="fu">=</span> <span class="dt">Reader</span> {<span class="ot"> runReader ::</span> r <span class="ot">-&gt;</span> a }</code></pre></div>
+<p>and we use <code>runReader</code> to interpret a <code>Reader</code> monad value once we’re done building it up.</p>
+<p>The <code>MonadReader r</code> typeclass captures the <code>Reader</code> specific functions, although for this post we’ll only be making us of <code>ask</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">ask ::</span> <span class="dt">Reader</span> r</code></pre></div>
+<p>which returns the environment value.</p>
+<p>Just like with <code>State</code>, we can make use of <code>Reader</code> in a monad transformer stack with <code>ReaderT</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">newtype</span> <span class="dt">ReaderT</span> r m a <span class="fu">=</span> <span class="dt">Reader</span> {<span class="ot"> runReaderT ::</span> r <span class="ot">-&gt;</span> m a }
+
+<span class="ot">ask ::</span> <span class="dt">ReaderT</span> r m r</code></pre></div>
+<p>and we can also define <code>Reader</code> in terms of <code>ReaderT</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Reader</span> r <span class="fu">=</span> <span class="dt">ReaderT</span> r <span class="dt">Identity</span>
+
+<span class="ot">runReader ::</span> <span class="dt">Reader</span> r a <span class="ot">-&gt;</span> a
+runReader <span class="fu">=</span> runIdentity <span class="fu">.</span> runReaderT</code></pre></div>
+<h2 id="cleaning-up-the-ad-hoc-interpreter">Cleaning up the ad-hoc interpreter</h2>
+<p>The ad-hoc interpreter is manually doing the work of a <code>State</code> monad for the count and a <code>Reader</code> monad for the limit.</p>
+<p>Let us clean that up, using <code>Reader</code> over <code>State</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Base</span> m <span class="fu">=</span> <span class="dt">ReaderT</span> <span class="dt">Int</span> (<span class="dt">StateT</span> <span class="dt">Int</span> m)
+
+<span class="ot">runBase ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Base</span> m r <span class="ot">-&gt;</span> m r
+runBase limit count <span class="fu">=</span>
+  flip evalStateT count <span class="fu">.</span>
+  flip runReaderT limit</code></pre></div>
+<p>We have a helper function, <code>interpret'</code>, which builds up a value of <code>Base m r</code>. We have written the code for <code>AdderT</code> and the <code>add</code>/<code>clear</code>/<code>total</code> helpers so that they’re generic in the underlying monads. This is where that genericity pays off - we have deferred mentioning the underlying monad right up until the point where we are interpreting our DSL, and so we can choose whatever monad we want.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">interpret' ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> <span class="dt">AdderT</span> (<span class="dt">Base</span> m) r <span class="ot">-&gt;</span> <span class="dt">Base</span> m r
+interpret' a <span class="fu">=</span> <span class="kw">do</span>
+  mr <span class="ot">&lt;-</span> runFreeT a
+  <span class="kw">case</span> mr <span class="kw">of</span>
+    <span class="dt">Pure</span> r <span class="ot">-&gt;</span> return r
+    <span class="dt">Free</span> (<span class="dt">Add</span> x k) <span class="ot">-&gt;</span> <span class="kw">do</span>
+      limit <span class="ot">&lt;-</span> ask
+      count <span class="ot">&lt;-</span> lift get
+      <span class="kw">let</span> count' <span class="fu">=</span> x <span class="fu">+</span> count
+      <span class="kw">let</span> test <span class="fu">=</span> count' <span class="fu">&lt;=</span> limit
+      <span class="kw">let</span> next <span class="fu">=</span> <span class="kw">if</span> test <span class="kw">then</span> count' <span class="kw">else</span> count
+      lift <span class="fu">.</span> put <span class="fu">$</span> next
+      interpret' (k test)
+    <span class="dt">Free</span> (<span class="dt">Clear</span> k) <span class="ot">-&gt;</span> <span class="kw">do</span>
+      lift <span class="fu">.</span> put <span class="fu">$</span> <span class="dv">0</span>
+      interpret' k
+    <span class="dt">Free</span> (<span class="dt">Total</span> k) <span class="ot">-&gt;</span> <span class="kw">do</span>
+      count <span class="ot">&lt;-</span> lift get
+      interpret' (k count)</code></pre></div>
+<p>Since <code>ReaderT</code> is at the top of the stack in <code>Base</code>, we can use <code>ask</code> directly.</p>
+<p>We need to use <code>lift</code> whenever we deal with the state. This transforms computations in the <code>StateT Int m</code> monad into computations in the <code>ReaderT Int (StateT Int m)</code> monad, which is what we are working in.</p>
+<p>We can combine both of these to get our cleaned up interpreter:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">interpret ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">AdderT</span> (<span class="dt">Base</span> m) r <span class="ot">-&gt;</span> m r
+interpret limit count <span class="fu">=</span>
+  runBase limit count <span class="fu">.</span>
+  interpret'</code></pre></div>
+<p>At this point we’re no longer explicitly threading a read-only environment value and an updatable state value through our computation and instead we access that functionality through a well-defined interace. Things are nicer, at least in the realm of the ad-hoc version of the interpreter.</p>
+<h2 id="transformers-style-and-mtl-style"><code>transformers</code> style and <code>mtl</code> style</h2>
+<p>There are different schools of thought on whether to use <code>transformers</code> style monad transformers - in which you have concrete types and you use explicit lifts - or <code>mtl</code> style monad transformers - in which you use typeclass constraints and don’t have to lift anything.</p>
+<p>I lean slightly towards working with <code>mtl</code> style transformers, since I like the ease with which I can use it for prototyping and putting together pieces that I might reuse - even if the reuse is just between now and the next refactoring. Anyhow.</p>
+<p>With <code>transformers</code> your code is explicit, and you can have multiple transformers of the same type in your stack.</p>
+<p>With <code>mtl</code> you can’t have multiple transformers of the same type, but you can easily write code that is decoupled from the concrete stack you end up using.</p>
+<p>This only involves a change to <code>interpret'</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Base</span> m <span class="fu">=</span> <span class="dt">ReaderT</span> <span class="dt">Int</span> (<span class="dt">StateT</span> <span class="dt">Int</span> m)
+
+<span class="ot">runBase ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Base</span> m r <span class="ot">-&gt;</span> m r
+runBase limit count <span class="fu">=</span>
+  flip evalStateT count <span class="fu">.</span>
+  flip runReaderT limit
+
+<span class="ot">interpret' ::</span> (<span class="dt">MonadReader</span> <span class="dt">Int</span> m, <span class="dt">MonadState</span> <span class="dt">Int</span> m) <span class="ot">=&gt;</span> <span class="dt">AdderT</span> m r <span class="ot">-&gt;</span> m r
+interpret' a <span class="fu">=</span> <span class="kw">do</span>
+  mr <span class="ot">&lt;-</span> runFreeT a
+  <span class="kw">case</span> mr <span class="kw">of</span>
+    <span class="dt">Pure</span> r <span class="ot">-&gt;</span> return r
+    <span class="dt">Free</span> (<span class="dt">Add</span> x k) <span class="ot">-&gt;</span> <span class="kw">do</span>
+      limit <span class="ot">&lt;-</span> ask
+      count <span class="ot">&lt;-</span> get
+      <span class="kw">let</span> count' <span class="fu">=</span> x <span class="fu">+</span> count
+      <span class="kw">let</span> test <span class="fu">=</span> count' <span class="fu">&lt;=</span> limit
+      <span class="kw">let</span> next <span class="fu">=</span> <span class="kw">if</span> test <span class="kw">then</span> count' <span class="kw">else</span> count
+      put next
+      interpret' (k test)
+    <span class="dt">Free</span> (<span class="dt">Clear</span> k) <span class="ot">-&gt;</span> <span class="kw">do</span>
+      put <span class="dv">0</span>
+      interpret' k
+    <span class="dt">Free</span> (<span class="dt">Total</span> k) <span class="ot">-&gt;</span> <span class="kw">do</span>
+      count <span class="ot">&lt;-</span> get
+      interpret' (k count)
+
+<span class="ot">interpret ::</span> (<span class="dt">Monad</span> m) <span class="ot">=&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">AdderT</span> (<span class="dt">Base</span> m) r <span class="ot">-&gt;</span> m r
+interpret limit count <span class="fu">=</span>
+  runBase limit count <span class="fu">.</span>
+  interpret'</code></pre></div>
+<p>We are using typeclass constraints to assert that the required functionality is in the monad transformer stack. We then use the functionality - <code>ask</code>, <code>get</code>, and <code>put</code> - directly, as it is all available from the typeclasses we mentioned in our typeclass constraints.</p>
+<p>This means we can change the order of the transformers in the stack without having to change <code>interpret'</code></p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">interpret1 ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">AdderT</span> (<span class="dt">ReaderT</span> <span class="dt">Int</span> (<span class="dt">StateT</span> <span class="dt">Int</span> m)) r <span class="ot">-&gt;</span> m r
+interpret1 limit count <span class="fu">=</span>
+  flip runStateT count <span class="fu">.</span>
+  flip runReaderT limit <span class="fu">.</span>
+  interpret'
+
+<span class="ot">interpret2 ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">AdderT</span> (<span class="dt">StateT</span> <span class="dt">Int</span> (<span class="dt">ReaderT</span> <span class="dt">Int</span> m)) r <span class="ot">-&gt;</span> m r
+interpret2 limit count <span class="fu">=</span>
+  flip runReaderT limit <span class="fu">.</span>
+  flip runStateT count <span class="fu">.</span>
+  interpret'</code></pre></div>
+<p>It also means we can factor out bits of the functionality, and limit the constraints to just what is required for what we’re working on:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">clearCount ::</span> <span class="dt">MonadState</span> <span class="dt">Int</span> m <span class="ot">-&gt;</span> m ()
+clearCount <span class="fu">=</span> put <span class="dv">0</span></code></pre></div>
+<p>Limiting the scope can mean that we can reuse the functionality in more places, and that our code can’t make sneaky use of the other transformers in the stack.</p>
+<p>It is worth noting that we can get these benefits from <code>transformers</code> style code if we want to, just like we can have multiple components to our <code>Reader</code> and <code>State</code> monads in <code>mtl</code> style. There is much more to say about the two styles, and about the tools and techniques that make working with monad transformers more pleasant - including the <code>mmorph</code> library and several different parts of <code>lens</code>. Going into further details on these is probably a post for another day.</p>
+<h1 id="comonad-transformers">Comonad transformers</h1>
+<p>In contrast to monads, comonads are about converting values in a comonadic context to pure values. I tend to think of this is “tearing down” a value in a comonadic context where monads are “building up” a value in a monadic context, however that’s perhaps not the best metaphor.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">class</span> <span class="dt">Comonad</span> w <span class="kw">where</span>
+<span class="ot">  extract   ::</span> w a <span class="ot">-&gt;</span> a
+<span class="ot">  extend    ::</span> (w a <span class="ot">-&gt;</span> b) <span class="ot">-&gt;</span> w a <span class="ot">-&gt;</span> w b</code></pre></div>
+<p>Recall that <code>extract</code> is the dual to <code>return</code> and <code>extend</code> is the dual to <code>bind</code>. Given that, we probably won’t find it too hard to view <code>extract</code> as something that converts from values in a comonad context to pure values directly, while <code>extend</code> helps us to do something similar in stages.</p>
+<p>That pattern continues with <code>lower</code> from <code>ComonadTrans</code>:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">class</span> <span class="dt">ComonadTrans</span> t <span class="kw">where</span>
 <span class="ot">  lower ::</span> t w a <span class="ot">-&gt;</span> w a</code></pre></div>
-<p>TODO description of Store / StoreT, link to current interpreter</p>
-<p>TODO description of Env / EnvT, link to current interpreter</p>
-<p>There are two parts to what we’re doing that we can factor out.</p>
-<p>We are making use of <code>count</code> as a kind of state. If we were working in a monadic context, we’d reach for eitehr the <code>State</code> monad or <code>StateT</code> monad transformer. The comonad transformer equivalent is <code>Store/StoreT</code>.</p>
-<p>We are making use of the <code>limit</code> as a kind of environment. Where a monadic version of the code would use <code>Reader/ReaderT</code>, the comonadic version will use <code>Env/EnvT</code>.</p>
-<h2 id="setting-up-the-stack">Setting up the stack</h2>
-<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">CoAdder</span> <span class="fu">=</span> <span class="dt">CoAdderT</span> <span class="dt">Base</span>
-<span class="kw">type</span> <span class="dt">Base</span> <span class="fu">=</span> <span class="dt">StoreT</span> <span class="dt">Int</span> (<span class="dt">EnvT</span> <span class="dt">Int</span> <span class="dt">Identity</span>)
-<span class="kw">type</span> <span class="dt">CoAdderT</span> <span class="fu">=</span> <span class="dt">CofreeT</span> <span class="dt">CoAdderF</span>
+<p>Every comonad transformer is also a comonad, and we can see that <code>lower</code> is helping us step down the stack to get closer to a pure value.</p>
+<p>Let’s look at a few of these things so we can get a bit more concrete.</p>
+<h2 id="store-and-storet"><code>Store</code> and <code>StoreT</code></h2>
+<p>The <code>Store</code> comonad is related to the <code>State</code> monad, but does things a bit differently.</p>
+<p>We store a function and an initial value:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Store</span> s a <span class="fu">=</span> <span class="dt">Store</span> (s <span class="ot">-&gt;</span> a) s</code></pre></div>
+<p>As an aside, if we squint at (and uncurry) <code>State</code> and <code>Store</code> we might see them as combinations of <code>(-&gt; s)</code> and <code>(, s)</code> but in different orders. There are volumes more to say about that, involving the relationship between adjunctions, monads, and comonads. If you’re interested to know more, you should ask in the reddit comments - there are folks in that community that are incredibly well versed in explaining those links and the vairous interesting avenues that branch off from there.</p>
+<p>We can use <code>fmap</code> to modify the function via composition:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Functor</span> (<span class="dt">Store</span> s) <span class="kw">where</span>
+  fmap f (<span class="dt">Store</span> g s) <span class="fu">=</span> <span class="dt">Store</span> (f <span class="fu">.</span> g) s</code></pre></div>
+<p>The <code>extract</code> function applies the stored function to the stored value, and <code>duplicate</code> turns the <code>a</code> into a <code>Store s a</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Comonad</span> (<span class="dt">Store</span> s) <span class="kw">where</span>
+  extract (<span class="dt">Store</span> f s) <span class="fu">=</span> f s
+  duplicate (<span class="dt">Store</span> f s) <span class="fu">=</span> <span class="dt">Store</span> (<span class="dt">Store</span> f) s</code></pre></div>
+<p>We have a number of helper functions - also accessible from the <code>ComonadStore s</code> typeclass - including:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">pos  ::</span> <span class="dt">Store</span> s a <span class="ot">-&gt;</span> s
+<span class="ot">seek ::</span> s <span class="ot">-&gt;</span> <span class="dt">Store</span> s a <span class="ot">-&gt;</span> <span class="dt">Store</span> s a
+<span class="ot">peek ::</span> s <span class="ot">-&gt;</span> <span class="dt">Store</span> s a <span class="ot">-&gt;</span> a</code></pre></div>
+<p>where</p>
+<ul>
+<li><code>pos</code> gets the stored value</li>
+<li><code>seek</code> sets the stored value, and</li>
+<li><code>peek</code> applies the stored function to a new value</li>
+</ul>
+<p>We’ll be making use of <code>pos</code> and <code>seek</code> to maintain state in our interpreter.</p>
+<p>In the <code>State</code> monad, <code>get</code> and <code>put</code> were able to return their values in the <code>State</code> monad, since we were building up a value in a monadic context. In the <code>Store</code> comonad, we’re tearing things down and so <code>pos</code> and <code>seek</code> look and behave like regular getter and setter functions - because that’s exactly what they are.</p>
+<p>There is a <code>runStore</code> function:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">runStore ::</span> <span class="dt">Store</span> s a <span class="ot">-&gt;</span> ((s <span class="ot">-&gt;</span> a), s)</code></pre></div>
+<p>but it’s not as exciting as <code>runState</code>.</p>
+<p>In the <code>State</code> monad, we were busily building up a state transformation function, and <code>runState</code> was the interpreter that tore it down into a pure value.</p>
+<p>In the <code>Store</code> comonad, we are doing the tearing down with the comonad, but we need something to tear down in the first place. For that reason, where we were interested in the accessor functions inside the <code>newtype</code> wrappers for the monads, we are are more interested in the constructors for the <code>comonads</code>- since the constructors give our context a starting point.</p>
+<p>This is also handy because we are making use of these comonad transformers in an interpreter, and that interpreter is meant to run forever. We could use <code>runStore</code> after that, for a sense of completeness, but I’ll omit it here.</p>
+<p>As we might expect, there is a <code>StoreT</code> comonad transformer which corresponds with <code>Store</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">StoreT</span> s w a <span class="fu">=</span> <span class="dt">StoreT</span> (w (s <span class="ot">-&gt;</span> a)) a
 
-<span class="ot">mkCoAdder ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">CoAdder</span> ()
+<span class="ot">pos  ::</span> <span class="dt">StoreT</span> s w a <span class="ot">-&gt;</span> s
+<span class="ot">seek ::</span> s <span class="ot">-&gt;</span> <span class="dt">StoreT</span> s w a <span class="ot">-&gt;</span> <span class="dt">StoreT</span> s w a
+<span class="ot">peek ::</span> <span class="dt">Comonad</span> w <span class="ot">=&gt;</span> s <span class="ot">-&gt;</span> <span class="dt">StoreT</span> s w a <span class="ot">-&gt;</span> a</code></pre></div>
+<p>and we can use the <code>Identity</code> comonad to define the <code>Store</code> in terms of <code>StoreT</code>.</p>
+<h2 id="env-and-envt"><code>Env</code> and <code>EnvT</code></h2>
+<p>The last peice we’ll need is the <code>Env</code> comonad:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Env</span> e a <span class="fu">=</span> <span class="dt">Env</span> e a</code></pre></div>
+<p>which is similar to the <code>Reader</code> monad in its functionality.</p>
+<p>Where <code>Reader</code> was a function from <code>e</code> to <code>a</code>, <code>Env</code> is just the pair of the two values.</p>
+<p>We have a helper function, also available in <code>ComonadEnv e</code>:</p>
+<pre><code>ask :: Env e a -&gt; e</code></pre>
+<p>and the expected transformer version:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">EnvT</span> e w a <span class="fu">=</span> <span class="dt">EnvT</span> e (w a)
+
+<span class="ot">ask ::</span> <span class="dt">EnvT</span> e w a <span class="ot">-&gt;</span> e</code></pre></div>
+<h2 id="cleaning-up-our-interpreter">Cleaning up our interpreter</h2>
+<p>With all of that in hand, let us clean up the cofree-based interpreter.</p>
+<p>We’re adding in a transformer stack, so we’ll switch from <code>Cofree</code></p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Cofree</span> f a <span class="fu">=</span> a <span class="fu">:&lt;</span> f (<span class="dt">Cofree</span> f a)</code></pre></div>
+<p>to <code>CofreeT</code></p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">CofreeF</span> f a b <span class="fu">=</span> a <span class="fu">:&lt;</span> <span class="dt">Cofree</span> f b
+<span class="kw">data</span> <span class="dt">CofreeT</span> f w a <span class="fu">=</span> <span class="dt">CoFreeT</span> {<span class="ot"> runCofreeT ::</span> w (<span class="dt">CofreeF</span> f a (<span class="dt">CofreeT</span> f w a)) }</code></pre></div>
+<p>We’re making use of <code>count</code> as a kind of state, and <code>limit</code> as a kind of environment:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Base</span> a <span class="fu">=</span> <span class="dt">StoreT</span> <span class="dt">Int</span> (<span class="dt">EnvT</span> <span class="dt">Int</span> <span class="dt">Identity</span>) a</code></pre></div>
+<p>In the case of our interpreter, we have:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">CoAdderT</span> w a <span class="fu">=</span> <span class="dt">CofreeT</span> <span class="dt">CoAdderF</span> w a</code></pre></div>
+<p>and then we combine the two to get:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">CoAdder</span> a <span class="fu">=</span> <span class="dt">CoAdderT</span> <span class="dt">Base</span> a</code></pre></div>
+<p>Now we just need to switch to the comonader transformer version of <code>coiter</code> - called <code>coiterT</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">coiterT ::</span> (<span class="dt">Functor</span> f, <span class="dt">Comonad</span> w) <span class="ot">=&gt;</span> (w a <span class="ot">-&gt;</span> f (w a)) <span class="ot">-&gt;</span> w a <span class="ot">-&gt;</span> <span class="dt">CofreeT</span> f w a</code></pre></div>
+<p>and update the value of <code>start</code>.</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">mkCoAdder ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">CoAdder</span> ()
 mkCoAdder limit count <span class="fu">=</span> coiterT next start
   <span class="kw">where</span>
     next  <span class="fu">=</span> <span class="dt">CoAdderF</span> <span class="fu">&lt;$&gt;</span> coAdd <span class="fu">&lt;*&gt;</span> coClear <span class="fu">&lt;*&gt;</span> coTotal
     start <span class="fu">=</span> flip <span class="dt">StoreT</span> count <span class="fu">.</span> <span class="dt">EnvT</span> limit <span class="fu">.</span> <span class="dt">Identity</span> <span class="fu">$</span> const ()</code></pre></div>
-<h2 id="introducing-storet">Introducing <code>StoreT</code></h2>
-<p>TODO storet definition and operations, what they mean</p>
+<p>Now <code>coAdd</code>, <code>coClear</code> and <code>coTotal</code> will change from having an argument of <code>(Int, Int)</code> to having an argument of <code>Base ()</code>. We’ll be a little more general and use <code>Base a</code> to keep the code as general as we can.</p>
+<p>We have <code>StoreT</code> at the top of our comonad transfomer stack, and <code>coClear</code> and <code>coTotal</code> only make use of the <code>StoreT</code> part of the stack. This means we can use the <code>seek</code> and <code>pos</code> functions directly:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">coClear ::</span> <span class="dt">Base</span> a <span class="ot">-&gt;</span> <span class="dt">Base</span> a
 coClear <span class="fu">=</span> seek <span class="dv">0</span>
 
 <span class="ot">coTotal ::</span> <span class="dt">Base</span> a <span class="ot">-&gt;</span> (<span class="dt">Int</span>, <span class="dt">Base</span> a)
 coTotal w <span class="fu">=</span> (pos w, w)</code></pre></div>
-<h2 id="introducting-envt">Introducting <code>EnvT</code></h2>
-<p>TODO envt definition and operations, what they mean</p>
+<p>As <code>coAdd</code> makes use of <code>EnvT</code>, we need to use <code>lower</code> to get acces to the <code>EnvT</code>:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">coAdd ::</span> <span class="dt">Base</span> a <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> (<span class="dt">Bool</span>, <span class="dt">Base</span> a)
 coAdd w x <span class="fu">=</span> (test, seek next w)
   <span class="kw">where</span>
@@ -107,11 +357,13 @@ coAdd w x <span class="fu">=</span> (test, seek next w)
     count' <span class="fu">=</span> count <span class="fu">+</span> x
     test   <span class="fu">=</span> count' <span class="fu">&lt;=</span> limit
     next   <span class="fu">=</span> <span class="kw">if</span> test <span class="kw">then</span> count' <span class="kw">else</span> count</code></pre></div>
+<p>Party on, Wayne.</p>
 <h2 id="the-hard-way">The hard way</h2>
-<p>This was pretty easy, but it gets a little trickier if we change the order of the transformer stack.</p>
-<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">CoAdder</span> <span class="fu">=</span> <span class="dt">CoAdderT</span> <span class="dt">Base</span>
-<span class="kw">type</span> <span class="dt">Base</span> <span class="fu">=</span> <span class="dt">EnvT</span> <span class="dt">Int</span> (<span class="dt">StoreT</span> <span class="dt">Int</span> <span class="dt">Identity</span>)
-<span class="kw">type</span> <span class="dt">CoAdderT</span> <span class="fu">=</span> <span class="dt">CofreeT</span> <span class="dt">CoAdderF</span>
+<p>Things get a little trickier if we change the order of the transformer stack.</p>
+<p>It is straight-forward to update the definiton of <code>Base</code> and change the way we construct <code>start</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Base</span> a       <span class="fu">=</span> <span class="dt">EnvT</span> <span class="dt">Int</span> (<span class="dt">StoreT</span> <span class="dt">Int</span> <span class="dt">Identity</span>) a
+<span class="kw">type</span> <span class="dt">CoAdderT</span> w a <span class="fu">=</span> <span class="dt">CofreeT</span> <span class="dt">CoAdderF</span> w a
+<span class="kw">type</span> <span class="dt">CoAdder</span> a    <span class="fu">=</span> <span class="dt">CoAdderT</span> <span class="dt">Base</span> a
 
 <span class="ot">mkCoAdder ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">CoAdder</span> ()
 mkCoAdder limit count <span class="fu">=</span>
@@ -119,14 +371,15 @@ mkCoAdder limit count <span class="fu">=</span>
   <span class="kw">where</span>
     next  <span class="fu">=</span> <span class="dt">CoAdderF</span> <span class="fu">&lt;$&gt;</span> coAdd <span class="fu">&lt;*&gt;</span> coClear <span class="fu">&lt;*&gt;</span> coTotal
     start <span class="fu">=</span> <span class="dt">EnvT</span> limit <span class="fu">.</span> flip <span class="dt">StoreT</span> count <span class="fu">.</span> <span class="dt">Identity</span> <span class="fu">$</span> const ()</code></pre></div>
-<p>Since <code>seek s</code> is defined as <code>peek s . duplicate</code>, we need some fancier footwork to update the value in the <code>StoreT</code>:</p>
+<p>We need some fancy footwork to update the value in the <code>StoreT</code>, since <code>seek s</code> is defined as <code>peek s . duplicate</code>:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">coClear ::</span> <span class="dt">Base</span> a <span class="ot">-&gt;</span> <span class="dt">Base</span> a
 coClear <span class="fu">=</span> peek <span class="dv">0</span> <span class="fu">.</span> lower <span class="fu">.</span> duplicate</code></pre></div>
-<p>Getting access to <code>pos</code> just requires that we <code>lower</code> into the <code>StoreT</code> first:</p>
+<p>That might not look all that fancy, but it was one the trickiest things I had to work out to put this post together.</p>
+<p>Getting access to <code>pos</code> requires that we <code>lower</code> into the <code>StoreT</code> first:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">coTotal ::</span> <span class="dt">Base</span> a <span class="ot">-&gt;</span> (<span class="dt">Int</span>, <span class="dt">Base</span> a)
-coTotal w <span class="fu">=</span> (pos <span class="fu">.</span> lower <span class="fu">$</span> w), w)
-
-<span class="ot">coAdd ::</span> <span class="dt">Base</span> a <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> (<span class="dt">Bool</span>, <span class="dt">Base</span> a)
+coTotal w <span class="fu">=</span> ((pos <span class="fu">.</span> lower <span class="fu">$</span> w), w)</code></pre></div>
+<p>and we can use <code>ask</code> directly since <code>EnvT</code> is on the top of our stack:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">coAdd ::</span> <span class="dt">Base</span> a <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> (<span class="dt">Bool</span>, <span class="dt">Base</span> a)
 coAdd w x <span class="fu">=</span> (test, peek next <span class="fu">.</span> lower <span class="fu">.</span> duplicate <span class="fu">$</span> w)
   <span class="kw">where</span>
     count  <span class="fu">=</span> pos <span class="fu">.</span> lower <span class="fu">$</span> w
@@ -134,13 +387,11 @@ coAdd w x <span class="fu">=</span> (test, peek next <span class="fu">.</span> l
     count' <span class="fu">=</span> count <span class="fu">+</span> x
     test   <span class="fu">=</span> count' <span class="fu">&lt;=</span> limit
     next   <span class="fu">=</span> <span class="kw">if</span> test <span class="kw">then</span> count' <span class="kw">else</span> count</code></pre></div>
+<p>Party on, Garth.</p>
 <h1 id="from-transformers-style-to-mtl-style">From <code>transformers</code> style to <code>mtl</code> style</h1>
-<p>There are different schools of thoughts on whether to use <code>transformers</code> style monad transformers - in which you have concrete types and you use explicit lifts - or <code>mtl</code> style monad transformers - in which you use typeclass constraints and don’t have to lift anything.</p>
-<p>I’m not going to take a strong stance here. With <code>transformers</code> your code is explicit and you can have multiple transformers of the same type in your stack. With <code>mtl</code> you can’t have multiple transformers of the same type, but you can write code that is decoupled from the concrete stack you end up using.</p>
-<p>I lean slightly towards working with <code>mtl</code> style transformers, since I like the ease with which I can use it for prototyping and putting together pieces that I might reuse - even if the reuse is just between now and the next refactoring.</p>
-<p>Anyhow.</p>
-<p>What we have so far demonstrates <code>transformers</code> style comonad transformers. It’s worth showing off the differences between that and <code>mtl</code> style comonad transformers.</p>
-<p>The cases for <code>coClear</code> and <code>coTotal</code> don’t change except for the type signatures, since <code>StoreT</code> is at the top of our stack.</p>
+<p>What we have so far demonstrates the use <code>transformers</code> style comonad transformers. It’s worth showing off the differences between that and <code>mtl</code> style comonad transformers.</p>
+<p>We’ll revert to <code>StoreT</code> over <code>EnvT</code> for this.</p>
+<p>With <code>StoreT</code> at the top of the stack, the cases for <code>coClear</code> and <code>coTotal</code> don’t change except for the type signatures:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">coClear ::</span> <span class="dt">ComonadStore</span> <span class="dt">Int</span> w <span class="ot">=&gt;</span> w a <span class="ot">-&gt;</span> w a
 coClear <span class="fu">=</span> seek <span class="dv">0</span>
 
@@ -155,10 +406,11 @@ coAdd w x <span class="fu">=</span> (test, seek next w)
     count' <span class="fu">=</span> count <span class="fu">+</span> x
     test   <span class="fu">=</span> count' <span class="fu">&lt;=</span> limit
     next   <span class="fu">=</span> <span class="kw">if</span> test <span class="kw">then</span> count' <span class="kw">else</span> count</code></pre></div>
-<p>The mkCoadder code doesn’t change at all - and more importantly, the <code>coClear</code>, <code>coTotal</code> and <code>coAdd</code> methods don’t change even if we change the order in which we stack the transformers.</p>
+<p>The code for <code>mkCoadder</code> doesn’t change at all. More importantly, the <code>coClear</code>, <code>coTotal</code> and <code>coAdd</code> methods don’t change even if we change the order of the transformer stack.</p>
 <p>Both</p>
-<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">CoAdderT</span> <span class="fu">=</span> <span class="dt">CofreeT</span> <span class="dt">CoAdderF</span>
-<span class="kw">type</span> <span class="dt">CoAdder</span> <span class="fu">=</span> <span class="dt">CoAdderT</span> (<span class="dt">StoreT</span> <span class="dt">Int</span> (<span class="dt">EnvT</span> <span class="dt">Int</span> <span class="dt">Identity</span>))
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Base</span> a       <span class="fu">=</span> <span class="dt">StoreT</span> <span class="dt">Int</span> (<span class="dt">EnvT</span> <span class="dt">Int</span> <span class="dt">Identity</span>) a
+<span class="kw">type</span> <span class="dt">CoAdderT</span> w a <span class="fu">=</span> <span class="dt">CofreeT</span> <span class="dt">CoAdderF</span> w a
+<span class="kw">type</span> <span class="dt">CoAdder</span> a    <span class="fu">=</span> <span class="dt">CoAdderT</span> <span class="dt">Base</span> a
 
 <span class="ot">mkCoAdder ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">CoAdder</span> ()
 mkCoAdder limit count <span class="fu">=</span>
@@ -167,8 +419,9 @@ mkCoAdder limit count <span class="fu">=</span>
     next  <span class="fu">=</span> <span class="dt">CoAdderF</span> <span class="fu">&lt;$&gt;</span> coAdd <span class="fu">&lt;*&gt;</span> coClear <span class="fu">&lt;*&gt;</span> coTotal
     start <span class="fu">=</span> flip <span class="dt">StoreT</span> count <span class="fu">.</span> <span class="dt">EnvT</span> limit <span class="fu">.</span> <span class="dt">Identity</span> <span class="fu">$</span> const ()</code></pre></div>
 <p>and</p>
-<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">CoAdderT</span> <span class="fu">=</span> <span class="dt">CofreeT</span> <span class="dt">CoAdderF</span>
-<span class="kw">type</span> <span class="dt">CoAdder</span> <span class="fu">=</span> <span class="dt">CoAdderT</span> (<span class="dt">EnvT</span> <span class="dt">Int</span> (<span class="dt">StoreT</span> <span class="dt">Int</span> <span class="dt">Identity</span>))
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Base</span> a       <span class="fu">=</span> <span class="dt">EnvT</span> <span class="dt">Int</span> (<span class="dt">StoreT</span> <span class="dt">Int</span> <span class="dt">Identity</span>) a
+<span class="kw">type</span> <span class="dt">CoAdderT</span> w a <span class="fu">=</span> <span class="dt">CofreeT</span> <span class="dt">CoAdderF</span> w a
+<span class="kw">type</span> <span class="dt">CoAdder</span> a    <span class="fu">=</span> <span class="dt">CoAdderT</span> <span class="dt">Base</span> a
 
 <span class="ot">mkCoAdder ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">CoAdder</span> ()
 mkCoAdder limit count <span class="fu">=</span>
@@ -177,13 +430,59 @@ mkCoAdder limit count <span class="fu">=</span>
     next  <span class="fu">=</span> <span class="dt">CoAdderF</span> <span class="fu">&lt;$&gt;</span> coAdd <span class="fu">&lt;*&gt;</span> coClear <span class="fu">&lt;*&gt;</span> coTotal
     start <span class="fu">=</span> <span class="dt">EnvT</span> limit <span class="fu">.</span> flip <span class="dt">StoreT</span> count <span class="fu">.</span> <span class="dt">Identity</span> <span class="fu">$</span> const ()</code></pre></div>
 <p>will work without adjustments.</p>
+<h1 id="pairing-in-the-presence-of-transformers">Pairing in the presence of transformers</h1>
+<p>So far we’ve been using the <code>Pairing</code> between <code>Cofree</code> and <code>Free</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Pairing</span> f g <span class="ot">=&gt;</span> <span class="dt">Pairing</span> (<span class="dt">Cofree</span> f) (<span class="dt">Free</span> g) <span class="kw">where</span>
+  pair p (a <span class="fu">:&lt;</span> _ ) (<span class="dt">Pure</span> x)  <span class="fu">=</span> p a x
+  pair p (_ <span class="fu">:&lt;</span> fs) (<span class="dt">Free</span> gs) <span class="fu">=</span> pair (pair p) fs gs</code></pre></div>
+<p>but now we’re going to need something which can handle the transformer stacks.</p>
+<p>We make use of the pure value at the root of our cofree tree with <code>extract</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">extract ::</span> <span class="dt">CofreeT</span> f w a <span class="ot">-&gt;</span> a</code></pre></div>
+<p>and thanks to the <code>ComonadCofree</code> typeclass we can also access the rest of the tree with <code>unwrap</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">unwrap ::</span> <span class="dt">Comonad</span> w <span class="ot">=&gt;</span> <span class="dt">CofreeT</span> f w a <span class="ot">-&gt;</span> f (w a)</code></pre></div>
+<p>These are used in <code>pairEffect</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">pairEffect ::</span> (<span class="dt">Pairing</span> f g, <span class="dt">Comonad</span> w, <span class="dt">Monad</span> m)
+           <span class="ot">=&gt;</span> (a <span class="ot">-&gt;</span> b <span class="ot">-&gt;</span> r) <span class="ot">-&gt;</span> <span class="dt">CofreeT</span> f w a <span class="ot">-&gt;</span> <span class="dt">FreeT</span> g m b <span class="ot">-&gt;</span> m r
+pairEffect p s c <span class="fu">=</span> <span class="kw">do</span>
+  mb <span class="ot">&lt;-</span> runFreeT c
+  <span class="kw">case</span> mb <span class="kw">of</span>
+    <span class="dt">Pure</span> x <span class="ot">-&gt;</span> return <span class="fu">$</span> p (extract s) x
+    <span class="dt">Free</span> gs <span class="ot">-&gt;</span> pair (pairEffect p) (unwrap s) gs</code></pre></div>
+<p>which interleaves handling effects and pairing DSL commands with interpreter handlers.</p>
+<p>This is handy for the cases where we will continually be producing DSL commands, and so will never get to the <code>Pure</code> case in the pairing. We need that if we try to write a console based <code>Adder</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">consoleAdder' ::</span> <span class="dt">MonadIO</span> m <span class="ot">=&gt;</span> <span class="dt">AdderT</span> m ()
+consoleAdder' <span class="fu">=</span> <span class="kw">do</span>
+    l <span class="ot">&lt;-</span> liftIO getLine
+    <span class="kw">case</span> words l <span class="kw">of</span>
+      [<span class="st">&quot;add&quot;</span>, x] <span class="ot">-&gt;</span> add (read x) <span class="fu">&gt;&gt;=</span> \b <span class="ot">-&gt;</span>
+        output <span class="fu">$</span> <span class="st">&quot;add result: &quot;</span> <span class="fu">++</span> show b
+      [<span class="st">&quot;clear&quot;</span>] <span class="ot">-&gt;</span> clear
+      [<span class="st">&quot;total&quot;</span>] <span class="ot">-&gt;</span> total <span class="fu">&gt;&gt;=</span> \t <span class="ot">-&gt;</span>
+        output <span class="fu">$</span> <span class="st">&quot;total result: &quot;</span> <span class="fu">++</span> show t
+      _ <span class="ot">-&gt;</span> output prompt
+  <span class="kw">where</span>
+   output <span class="fu">=</span> liftIO <span class="fu">.</span> putStrLn
+   prompt <span class="fu">=</span> unlines [
+            <span class="st">&quot;Commands:&quot;</span>
+          , <span class="st">&quot;  add [int]&quot;</span>
+          , <span class="st">&quot;  clear&quot;</span>
+          , <span class="st">&quot;  total&quot;</span>
+          ]
+
+<span class="ot">consoleAdder ::</span> <span class="dt">MonadIO</span> m <span class="ot">=&gt;</span> <span class="dt">AdderT</span> m ()
+consoleAdder <span class="fu">=</span> forever consoleAdder'</code></pre></div>
+<p>We can use <code>pairEffect</code> to couple this with our comonad transformer version of <code>mkCoAdder</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">testConsole ::</span> <span class="dt">IO</span> ()
+testConsole <span class="fu">=</span> pairEffect (\_ r <span class="ot">-&gt;</span> r) (mkCoAdder <span class="dv">10</span> <span class="dv">0</span>) consoleAdder</code></pre></div>
+<p>although we could just as easily have used a pure version of <code>mkCoAdder</code> stacked on top of the <code>Identity</code> comonad and <code>pairEffect</code> would have continued to work.</p>
 <h1 id="conclusion">Conclusion</h1>
 <p>We’ve now factored out the state and environment from the interpreter, but there are still aspects of both the DSL and the interpreter which are more strongly coupled than they need to be.</p>
-<p>We’ll start to deal with this in the next post, where we’ll use coproducts to break out the orthogonal parts of the the DSL and products to make a similar change to the interpreter.</p>
+<p>We’ll start to deal with this in the next post, where we’ll use coproducts to break out the orthogonal parts of the the DSL and products to make a similar change to the interpreter. After that we’ll have a deeper look at making use of various effects in conjunction with free and cofree.</p>
+<!-- TODO link to reddit -->
     </div>
     
     <div class="panel-footer">
-        <h5>Posted on May 24, 2015 </h5>
+        <h5>Posted on June 15, 2015 </h5>
     </div>
     
 </div>
