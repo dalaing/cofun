@@ -167,7 +167,7 @@ findLimit' = do
 
 This is a good example of using `lift` to build up the values in a monad stack and using the various domain specific functions to help interpret them.
 
-Inside of `findLimit`, We can make use of `modify` because `StateT` is on top of the stack.
+Inside of `findLimit`, we can make use of `modify` because `StateT` is on top of the stack.
 
 If we remember the type of `add`:
 ```haskell
@@ -206,7 +206,7 @@ and we use `runReader` to interpret a `Reader` monad value once we're done build
 
 The `MonadReader r` typeclass captures the `Reader` specific functions, although for this post we'll only be making us of `ask`:
 ```haskell
-ask :: Reader r
+ask :: Reader r r 
 ```
 which returns the environment value.
 
@@ -455,13 +455,13 @@ data Env e a = Env e a
 ```
 which is similar to the `Reader` monad in its functionality.
 
-Where `Reader` was a function from `e` to `a`, `Env` is just the pair of the two values.
+Where `Reader` was a function from `e` to `a`, `Env` is the pair of the two values.
 
 We have a helper function, also available in `ComonadEnv e`:
 ```
 ask :: Env e a -> e
 ```
-and the expected transformer version:
+that returns the environment value, and the expected transformer version:
 ```haskell
 data EnvT e w a = EnvT e (w a)
 
