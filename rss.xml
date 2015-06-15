@@ -291,10 +291,10 @@ clearCount <span class="fu">=</span> put <span class="dv">0</span></code></pre><
 <p>The last piece we’ll need is the <code>Env</code> comonad:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Env</span> e a <span class="fu">=</span> <span class="dt">Env</span> e a</code></pre></div>
 <p>which is similar to the <code>Reader</code> monad in its functionality.</p>
-<p>Where <code>Reader</code> was a function from <code>e</code> to <code>a</code>, <code>Env</code> is just the pair of the two values.</p>
+<p>Where <code>Reader</code> was a function from <code>e</code> to <code>a</code>, <code>Env</code> is the pair of the two values.</p>
 <p>We have a helper function, also available in <code>ComonadEnv e</code>:</p>
 <pre><code>ask :: Env e a -&gt; e</code></pre>
-<p>and the expected transformer version:</p>
+<p>that returns the environment value, and the expected transformer version:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">EnvT</span> e w a <span class="fu">=</span> <span class="dt">EnvT</span> e (w a)
 
 <span class="ot">ask ::</span> <span class="dt">EnvT</span> e w a <span class="ot">-&gt;</span> e</code></pre></div>
