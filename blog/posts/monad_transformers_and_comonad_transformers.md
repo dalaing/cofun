@@ -712,4 +712,4 @@ We've now factored out the state and environment from the interpreter, but there
 We'll start to deal with this in the next post, where we'll use coproducts to break out the orthogonal parts of the the DSL and products to make a similar change to the interpreter.
 After that we'll have a deeper look at making use of various effects in conjunction with free and cofree.
 
-<!-- TODO link to reddit -->
+[Questions? Comments?](http://www.reddit.com/r/haskell/comments/39vaqj/monad_transformers_and_comonad_transformers/)

@@ -16,13 +16,13 @@ I've writtend some blog posts corresponding to the content of the talk:
 
 - [A whirlwind tour of comonads](/posts/comonads.html)
 - [Free monads for DSL, cofree comonads for interpreters](/posts/free_and_cofree.html)
+- [Monad transformers and comonad transformers](/posts/monad_transformers_and_comonad_transformers.html)
 
-<!-- - [Cleaning up with comonad transformers](/posts/cofree_and_comonad_transformers.html)
+<!--
 - [Factoring out functionality with coproducts and friends](/posts/coproducts_for_free_and_products_for_cofree.html) -->
 
 Coming soon:
 
-- Cleaning up with comonad transformers
 - Factoring out functionality with coproducts and friends
 - Pairing, effects and networking
 

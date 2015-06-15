@@ -470,7 +470,7 @@ You can do funkier things than this, but that should be enough to get you starte
 I have a lot I'd like to explore and write about, but the next few topics will be based on the things I already partly covered in the talk that this is based on.
 
 The current version of our interpreter is manually handing both environment and state.
-We can clean this up by using comonad transformers.
+We can clean this up by using [comonad transformers](/posts/monad_transformers_and_comonad_transformers.html).
 This turns out to be pretty similar to working with monad transformers, down to the fact that we can use the transformers in either `transformers` or `mtl` style.
 
 We can break the DSL down into independent parts using coproducts, as covered in [Data types a la carte](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.101.4131).
