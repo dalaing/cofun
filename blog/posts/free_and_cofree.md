@@ -191,20 +191,22 @@ findLimit' = do
 
 At this point, some folks would build an interpreter for their DSL that may look a little like this:
 ```haskell
-interpret :: Monad m => Limit -> Count -> AdderT m r -> m r
+interpret :: Monad m => Int -> Int -> AdderT m r -> m r
 interpret limit count a = do
   mr <- runFreeT a
   case mr of
-   Pure r -> return r
-   Free (Add x k) -> do
-     let count' = x + count
-     let test = count' <= limit
-     let next = if test then count' else count
-     interpret limit next (k test)
-   Free (Clear k) ->
-     interpret limit 0 k
-   Free (Total k) ->
-     interpret limit count (k count)
+    Pure r -> return r
+    Free (Add x k) ->
+      let
+        count' = x + count
+        test = count' <= limit
+        next = if test then count' else count
+      in
+        interpret limit next (k test)
+    Free (Clear k) ->
+      interpret limit 0 k
+    Free (Total k) ->
+      interpret limit count (k count)
 ```
 
 We can encapsulate the recursion with things like `iter`, `iterT` and `iterTM`, and I've written `iterTTM` in the accompanying to show how that works in this case.
