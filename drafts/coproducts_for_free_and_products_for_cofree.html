@@ -127,7 +127,7 @@ findLimit' <span class="fu">=</span> <span class="kw">do</span>
     findLimit'</code></pre></div>
 <h1 id="products-for-cofree-comonads">Products for cofree comonads</h1>
 <p>That’s all well and good for the DSL, but we now need to update our interpreter to work with it.</p>
-<p>Remember that we had an underlying functor for our interpreter</p>
+<p>Remember that we had an underlying functor for our interpreter:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">CoAdderF</span> k <span class="fu">=</span> <span class="dt">CoAdderF</span> {
 <span class="ot">    addH   ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> (<span class="dt">Bool</span>,k)
   ,<span class="ot"> clearH ::</span> k
@@ -235,14 +235,23 @@ mkCoAdder limit count <span class="fu">=</span>
 
 <span class="co">-- There is a Pairing instance for CoAdderF an AdderF if there are</span>
 <span class="co">-- Pairing instances for each of AddF / CoAddF, ClearF / CoClearF and TotalF / CoTotalF</span></code></pre></div>
-<p>Everything should work as before, but we’ve gained the ability to mix and match functionality in both the DSL and the interpreter.</p>
+<p>Everything should work out as before, and we’ve gained the ability to mix and match functionality in both the DSL and the interpreter.</p>
 <p>Even though we have the parts of the interpreter separated out, they still interact via the underlying comonad transformers. This provides another axis for combination and reuse.</p>
 <p>For example, you can write reusable code on top of component <code>X</code>, you can write reusable code on top of component <code>Y</code>, and you can also write reusable code on top of the combination of components <code>X</code> and <code>Y</code> and a <code>ComonadStore Int w</code> context.</p>
 <p>Lots of fun to be had.</p>
-<h1 id="conclusion">Conclusion</h1>
+<h1 id="conclusion-and-open-questions">Conclusion and open questions</h1>
 <p>We now have a decent separation of concerns for our DSL and interpreter, and the ability to mix and match DSLs and interpreters together.</p>
 <p>It also means that we can write the code for these things in a context where we only have access to the things that we really need. This is increases the scope for reuse and decreases the scope for writing misbehaving code, and I’m a fan of both of those.</p>
-<p>I’m still interested in how to do better with the “Data types a la carte” machinery. I’m also curious about whether we can <a href="http://stackoverflow.com/a/21395817">go even further than Sum and Product</a>, although I’m still not clear on how far that can be pushed in this context to make things more useful.</p>
+<p>I’m still interested in how to do better with the “Data types a la carte” machinery. With the current machinery, we need to make sure that our <code>Sum</code>s and <code>Product</code>s have the same components in the same order. It feels like it should be possible to do significantly better than this, such that:</p>
+<ul>
+<li>the components are guaranteed to be unique and the order doesn’t matter (effectively a Set)
+<ul>
+<li>this should also deal with the current problem of asymmetry</li>
+</ul></li>
+<li>if the <code>Sum</code> components are a subset of the <code>Product</code> components we can automatically create a <code>Pairing</code> from the <code>Pairing</code>s between the components.</li>
+</ul>
+<p>I’ll probably tinker with this eventually, but if someone gets there before I do I’ll be pretty grateful.</p>
+<p>I’m also curious about whether we can <a href="http://stackoverflow.com/a/21395817">go even further than Sum and Product</a>, although I’m still not clear on how far that can be pushed in this context to make things more useful.</p>
 <p>So far, none of the interpreters we’ve defined have done any IO. The next post will look at our options for dealing with effects in our DSLs and interpreters.</p>
 <!--[Questions? Comments?](TODO)-->
     </div>
