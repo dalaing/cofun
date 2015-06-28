@@ -249,7 +249,7 @@ mkCoAdder limit count <span class="fu">=</span>
 <p>I’m also curious about whether we can <a href="http://stackoverflow.com/a/21395817">go even further than Sum and Product</a>, although I’m still not clear on how far that can be pushed in this context to make things more useful.</p>
 <p>There’s still a few posts to come before I’ve covered everything I mentioned in the talk.</p>
 <p>So far, none of the interpreters we’ve defined have done any IO. The next post will look at our options for dealing with effects in our DSLs and interpreters.</p>
-<!--[Questions? Comments?](TODO)-->]]></description>
+<p><a href="https://www.reddit.com/r/haskell/comments/3beiti/coproducts_for_free_and_products_for_cofree/">Questions? Comments?</a></p>]]></description>
     <pubDate>Sun, 28 Jun 2015 23:00:00 UT</pubDate>
     <guid>http://dlaing.org/cofun/posts/coproducts_for_free_and_products_for_cofree.html</guid>
     <dc:creator>Dave Laing</dc:creator>
