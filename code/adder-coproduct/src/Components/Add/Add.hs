@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeOperators    #-}
 module Components.Add.Add (
     add
@@ -8,7 +9,8 @@ import           Components.Add.Functors  (AddF (..))
 
 import           Util.Coproduct           ((:<:) (..))
 
-import           Control.Monad.Trans.Free (FreeT, liftF)
+import           Control.Monad.Free (MonadFree)
+import           Control.Monad.Trans.Free (liftF)
 
-add :: (Functor f, Monad m, AddF :<: f) => Int -> FreeT f m Bool
+add :: (MonadFree f m, AddF :<: f) => Int -> m Bool
 add x = liftF . inj $ Add x id

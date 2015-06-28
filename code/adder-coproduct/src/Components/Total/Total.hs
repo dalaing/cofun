@@ -8,7 +8,8 @@ import           Components.Total.Functors (TotalF (..))
 
 import           Util.Coproduct            ((:<:) (..))
 
-import           Control.Monad.Trans.Free  (FreeT, liftF)
+import           Control.Monad.Free        (MonadFree)
+import           Control.Monad.Trans.Free  (liftF)
 
-total :: (Functor f, Monad m, TotalF :<: f) => FreeT f m Int
+total :: (MonadFree f m, TotalF :<: f) => m Int
 total = liftF . inj $ Total id

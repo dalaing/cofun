@@ -1,5 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeOperators    #-}
+{-# LANGUAGE TypeOperators        #-}
 module AdderService.Adder (
     AdderT
   , AdderF

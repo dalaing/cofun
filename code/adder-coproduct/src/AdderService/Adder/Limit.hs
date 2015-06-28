@@ -15,10 +15,10 @@ import           Util.Coproduct            ((:<:) (..))
 
 import           Control.Monad             (when)
 import           Control.Monad.Trans.Class (lift)
-import           Control.Monad.Trans.Free  (FreeT)
+import           Control.Monad.Free        (MonadFree)
 import           Control.Monad.Trans.State (StateT, execStateT, modify)
 
-findLimit :: (Monad m, AddF :<: f, ClearF :<: f, TotalF :<: f) => FreeT f m Int
+findLimit :: (MonadFree f m, AddF :<: f, ClearF :<: f, TotalF :<: f) => m Int
 findLimit = do
    -- capture the old count
    t <- total
@@ -30,7 +30,7 @@ findLimit = do
    _ <- add t
    return r
 
-findLimit' :: (Monad m, AddF :<: f) => StateT Int (FreeT f m) ()
+findLimit' :: (MonadFree f m, AddF :<: f) => StateT Int m ()
 findLimit' = do
   r <- lift $ add 1
   when r $ do
