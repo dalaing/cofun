@@ -1,9 +1,15 @@
 ---
 title: Coproducts for free, and products for cofree
-published: 2015-05-25 19:00:00+10:00
+published: 2015-06-29 09:00:00+10:00
 ---
 
 # Coproducts for free monads
+
+In the last two posts, we have [built a DSL from a free monad and the corresponding interpreter from a cofree comonad](/posts/free_and_cofree.html) and [cleaned up the interpreter with comonad transformers](/posts/monad_transformers_and_comonad_transformers.html).
+
+The comonad transformers helped to factor out common concerns - in this case, passing in configuration and handling state.
+
+We can out our concerns even further than this.
 
 The underlying functor for our DSL is
 ```haskell
@@ -13,13 +19,16 @@ data AdderF k =
   | Total (Int -> k)
 ```
 
-You might have noticed that these are independent of one another as far as the functor instance and the free monad go.  Or you might have read [Datatypes a la carte](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.101.4131).
+You might have noticed that the three constructors are independent of one another as far as the functor instance and the free monad go.
+You might also have read [Data types a la carte](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.101.4131).
 
-As an aside, if you haven't read 'Datatypes a la carte' before you should give it a go.
+As an aside, if you haven't read 'Data types a la carte' before you should give it a go.
 It's really well written, and if you've followed up to this point then you're probably ready for it.
 I tried to read it very early on in my Haskell journey and ended up slowly backing away, but I'm glad I doubled back around to it eventually.
 
-You can break the independent parts out
+Anyhow.
+
+We can break the independent parts out:
 ```haskell
 data AddF k = Add Int (Bool -> k)
 
@@ -27,7 +36,7 @@ data ClearF k = Clear k
 
 data TotalF k = Total (Int -> k)
 ```
-and you can write functor instances for these
+and we can write `Functor` instances for these:
 ```haskell
 instance Functor AddF where
   fmap f (Add x k) = Add x (f . k)
@@ -39,33 +48,113 @@ instance Functor TotalF where
   fmap f (Total k) = Total (f . k)
 ```
 
-Using the `Sum` functor, we can recover the old `AdderF`.
-[Sum](https://hackage.haskell.org/package/transformers/docs/Data-Functor-Sum.html) comes from `transformers`, and makes a `Functor` from the sum of two `Functors`.
+We can now recover `AdderF` by using [`Sum`](https://hackage.haskell.org/package/transformers/docs/Data-Functor-Sum.html), which makes a `Functor` from the sum of two other `Functors`.
 
+The relevant bits of `Sum` are
 ```haskell
-{-# LANGUAGE TypeOperatoes #-}
+data Sum f g a = InL (f a) | InR (g a)
 
--- we introduce a type operator to match "Datatypes a la carte"
+instance (Functor f, Functor g) => Functor (Sum f g) where
+  fmap f (InL x) = InL (fmap f x)
+  fmap f (InR x) = InR (fmap f x)
+```
+and we end up with
+```haskell
+{-# LANGUAGE TypeOperators #-}
+
+-- we introduce a type operator to match "Data types a la carte" and Dan Piponi's post on free and cofree
 type f :+: g = Sum f g
 
 type AdderF = AddF :+: ClearF :+: TotalF
 ```
+which will behave in the same manner the old `AdderF` as far as the `Functor` instance - and hence the free monad - is concerned.
 
-And, with some help from the typeclass machinery introduced in "Datatypes a la carte", we can make our combinators more flexible.
-```haskell
-```
-TODO explain why this is good / useful
+## Classier coproducts
 
-This works with `findLimit`
+With some help from the typeclass machinery introduced in "Data types a la carte", we can make our combinators more flexible.
+
+The relevant machinery is as follows:
 ```haskell
+class (Functor sub, Functor sup) => sub :<: sup where
+  inj :: sub a -> sup a
+
+instance Functor f => f :<: f where
+  inj = id
+
+instance (Functor f, Functor g) => f :<: (f :+: g) where
+  inj = InL
+
+instance (Functor f, Functor g, Functor h, f :<: g) => f :<: (h :+: g) where
+  inj = InR . inj
 ```
-but we can make that more flexible as well.
+
+This allows us to set up a constraint `f :<: g`, which asserts that `f` is somewhere in the sum of functors `g`.
+Where that constraint holds we can also convert an `f` into a `g` with `inj`.
+
+As an aside, Phil Wadler [noted](http://wadler.blogspot.com.au/2008/02/data-types-la-carte.html) that the above machinery is asymmetric - which means that while
 ```haskell
+f :<: d :+: e :+: f :+: g
+```
+is fine
+```haskell
+f :<: d :+: (e :+: f) :+: g
+```
+is not.
+
+There are a few solutions posted in the comments section of that post.
+I'm not sure what the current best practice is on that front.
+I'll be looking into it later, but if anyone has any pointers or thoughts on the topic I'd love to hear about it.
+
+For illustrating the technique, it's fine as long as we're careful.
+
+With the new tool in the toolbox, we can now do the following:
+```haskell
+add :: (MonadFree f m, AddF :<: f) => Int -> m Bool
+add x = liftF . inj $ Add x id
+```
+
+```haskell
+clear :: (MonadFree f m, ClearF :<: f) => m ()
+clear = liftF . inj $ Clear ()
+```
+
+```haskell
+total :: (MonadFree f m, TotalF :<: f) => m Int
+total = liftF . inj $ Total id
+```
+
+These can be put in separate modules and imported as needed by client code.
+
+That's probably not so impressive in this case.
+As a more impressive example, we could build up separate DSLs for authentication, database access and logging, and then mix and match to get whatever custom combination we needed, with access to any code we'd built up on top of those DSLS.
+
+To see how this looks, we can update `findLimit` to work in a larger number of contexts:
+```haskell
+findLimit :: (MonadFree f m, AddF :<: f, ClearF :<: f, TotalF :<: f) => m Int
+findLimit = do
+   -- capture the old count
+   t <- total
+   -- clear the count and the state
+   clear
+   r <- execStateT findLimit' 0
+   -- restore the old count
+   clear
+   _ <- add t
+   return r
+
+findLimit' :: (MonadFree f m, AddF :<: f) => StateT Int m ()
+findLimit' = do
+  r <- lift $ add 1
+  when r $ do
+    modify (+ 1)
+    findLimit'
 ```
 
 # Products for cofree comonads
 
-Recall that we had an underlying functor for our interpreter
+That's all well and good for the DSL, but we now need to update our interpreter to work with it.
+
+Remember that we had an underlying functor for our interpreter
 ```haskell
 data CoAdderF k = CoAdderF {
     addH   :: Int -> (Bool,k)
@@ -74,14 +163,10 @@ data CoAdderF k = CoAdderF {
   }
 ```
 and a pairing between our DSL and interpreter functors
-```haskell
-instance Pairing CoAdderF AdderF where
-  pair f (CoAdderF a _ _) (Add x k) = pair f (a x) k
-  pair f (CoAdderF _ c _) (Clear k) = f c k
-  pair f (CoAdderF _ _ t) (Total k) = pair f t k
-```
 
-We can factor those out into independent peices as well:
+We can factor those out into independent pieces as well.
+
+`CoAdderF` gets broken in a similar manner to what we did with `AdderF`:
 ```haskell
 data CoAddF k = CoAdd (Int -> (Bool, k))
 
@@ -89,7 +174,7 @@ data CoClearF k = CoClear k
 
 data CoTotalF k = CoTotal (Int, k)
 ```
-and provide the `Functor` instances:
+and we can easily make the corresponding `Functor` instances:
 ```haskell
 instance Functor CoAddF where
   fmap f (CoAdd a) = CoAdd (fmap (fmap f) a)
@@ -98,40 +183,112 @@ instance Functor CoClearF where
   fmap f (CoClear k) = CoClear (f k)
 
 instance Functor CoTotalF where
-    fmap f (CoTotal t) = CoTotal (fmap f t)
+  fmap f (CoTotal t) = CoTotal (fmap f t)
 ```
 
-In the same way that we used the `Sum` functor for the DSL, we can use the `Product` functor to recover the old `CoAdderF`.
+In the same way that we used the `Sum` to recover `AdderF`, we can use [`Product`](https://hackage.haskell.org/package/transformers/docs/Data-Functor-Sum.html) to recover `CoAdderF`.
 
-[Product](https://hackage.haskell.org/package/transformers/docs/Data-Functor-Product.html) comes from `transformers`, and makes a `Functor` from the product of two `Functors`.
-
+The relevant bits of `Product` are
 ```haskell
-{-# LANGUAGE TypeOperatoes #-}
+data Product f g a = Pair (f a) (g a)
 
--- we introduce a type operator to match "Datatypes a la carte"
+instance (Functor f, Functor g) => Functor (Product f g) where
+  fmap h (Pair f g) = Pair (fmap h f) (fmap h g)
+```
+which gives us
+```haskell
+{-# LANGUAGE TypeOperators #-}
+
+-- we introduce a type operator to match "Data types a la carte" and Dan Piponi's post on free and cofree
 type f :*: g = Product f g
 
 type CoAdderF = CoAddF :*: CoClearF :*: CoTotalF
 ```
 
-TODO mkCoAdder
+Again, the new version of `CoAdderF` will behave in the same way as the old version as far as we're concerned.
 
-TODO explain cross talk via underlying transformers
-
-# Pairing coproducts and products
-
-There are pairings between `Sum` and `Product` functors if there are pairings between their components
+Our old interpreter functions had types:
 ```haskell
-instance (Pairing f f', Pairing g g') => Pairing (f :+: g) (f' :*: g') where
-  pair p (LeftF x) (a :*: _) = pair p x a
-  pair p (RightF x) (_ :*: b) = pair p x b
-
-instance (Pairing f f', Pairing g g') => Pairing (f :*: g) (f' :+: g') where
-  pair p (a :*: _) (LeftF x) = pair p a x
-  pair p (_ :*: b) (RightF x) = pair p b x
+coAdd   :: (ComonadEnv Int w, ComonadStore Int w) => w a -> Int -> (Bool, w a)
+coClear :: ComonadStore Int w => w a -> w a
+coTotal :: ComonadStore Int w => w a -> (Int, w a)
+```
+but the new ones have a constructor wrapping up most of the details
+```haskell
+coAdd   :: (ComonadEnv Int w, ComonadStore Int w) => w a -> CoAddF (w a)
+coClear :: ComonadStore Int w => w a -> CoClearF (w a)
+coTotal :: ComonadStore Int w => w a -> CoTotalF(w a)
 ```
 
-This means that we only need to provide pairings between the corresponding functors from the DSL and interpreter functors, and we'll be back to where we were:
+Aside from the changes associated with those new constructors, the implementations don't change much:
+```haskell
+coAdd :: (ComonadEnv Int w, ComonadStore Int w) => w a -> CoAddF (w a)
+coAdd w = CoAdd $ \x ->
+  let
+    count = pos w
+    limit = ask w
+    count' = count + x
+    test = count' <= limit
+    next = if test then count' else count
+  in
+    (test, seek next w)
+```
+
+```haskell
+coClear :: ComonadStore Int w => w a -> CoClearF (w a)
+coClear = CoClear . seek 0
+```
+
+```haskell
+coTotal :: ComonadStore Int w => w a -> CoTotalF (w a)
+coTotal w = CoTotal (pos w, w)
+```
+
+Just like the components of our DSL, the components of the interpreter can all be placed in different modules and mixed and matched as we like.
+
+We just need something to stitch these together.
+Since `coiter` takes a function `a -> f a` and `coiterT` takes a function `w a -> f (w a)`, we should be able to do our stitching in terms of `a -> f a` for the various components and have it work for either `coiter` or `coiterT`.
+
+What we need is something to combine two of these functions into a product:
+```haskell
+(*:*) :: (Functor f, Functor g) => (a -> f a) -> (a -> g a) -> a -> (f :*: g) a
+(*:*) = liftA2 Pair
+```
+which we can use to update the definition of `mkCoAdder`:
+```haskell
+type CoAdderF = CoAddF :*: CoClearF :*: CoTotalF
+
+mkCoAdder :: Int -> Int -> CoFreeT CoAdderF (StoreT Int (EnvT Int Identity)) ()
+mkCoAdder limit count =
+    coiterT next start
+  where
+    next = coAdd *:* coClear *:* coTotal
+    start = flip StoreT count . EnvT limit . Identity $ const ()
+```
+
+# Pairings
+
+The last piece of the puzzle is to establish a `Pairing` between `AdderF` and `CoAdderF`.
+Previously, this was
+```haskell
+instance Pairing CoAdderF AdderF where
+  pair f (CoAdderF a _ _) (Add x k) = pair f (a x) k
+  pair f (CoAdderF _ c _) (Clear k) = f c k
+  pair f (CoAdderF _ _ t) (Total k) = pair f t k
+```
+
+There are pairings between `Sum` and `Product` functors if there are pairings between their components:
+```haskell
+instance (Pairing f f', Pairing g g') => Pairing (f :+: g) (f' :*: g') where
+  pair p (InL x) (Pair a _) = pair p x a
+  pair p (InR x) (Pair _ b) = pair p x b
+
+instance (Pairing f f', Pairing g g') => Pairing (f :*: g) (f' :+: g') where
+  pair p (Pair a _) (InL x) = pair p a x
+  pair p (Pair _ b) (InR x) = pair p b x
+```
+
+This means that we only need to provide pairings between the corresponding functors from the DSL and interpreter functors:
 ```haskell
 instance Pairing CoAddF AddF where
   pair f (CoAdd a) (Add x k) = pair f (a x) k
@@ -140,15 +297,41 @@ instance Pairing CoClearF ClearF where
   pair f (CoClear c) (Clear k) = f c k
 
 instance Pairing CoTotalF TotalF where
-    pair f (CoTotal t) (Total k) = pair f t k
+  pair f (CoTotal t) (Total k) = pair f t k
 ```
+and we'll be back to where we were:
+```haskell
+type AdderF   = AddF :+: ClearF :+: TotalF
+-- There is a Functor instance for AdderF if there are
+-- Functor instances for each of AddF, ClearF and TotalF
+
+type CoAdderF = CoAddF :*: CoClearF :*: CoTotalF
+-- There is a Functor instance for CoAdder if there are
+-- Functor instances for each of CoAddF, CoClearF and CoTotalF
+
+-- There is a Pairing instance for CoAdderF an AdderF if there are
+-- Pairing instances for each of AddF / CoAddF, ClearF / CoClearF and TotalF / CoTotalF
+```
+
+Everything should work as before, but we've gained the ability to mix and match functionality in both the DSL and the interpreter.
+
+Even though we have the parts of the interpreter separated out, they still interact via the underlying comonad transformers.
+This provides another axis for combination and reuse.
+
+For example, you can write reusable code on top of component `X`, you can write reusable code on top of component `Y`, and you can also write reusable code on top of the combination of components `X` and `Y` and a `ComonadStore Int w` context.
+
+Lots of fun to be had.
 
 # Conclusion
 
-TODO why this is good
+We now have a decent separation of concerns for our DSL and interpreter, and the ability to mix and match DSLs and interpreters together.
 
-TODO opens the door to good things, allows a lighter touch, networking related results coming soon
+It also means that we can write the code for these things in a context where we only have access to the things that we really need.
+This is increases the scope for reuse and decreases the scope for writing misbehaving code, and I'm a fan of both of those.
 
-TODO at end
-- can we use products in a meaningful way in free? timing and auth?
-- can we use compose and friends to make things interestings?
+I'm still interested in how to do better with the "Data types a la carte" machinery.
+I'm also curious about whether we can [go even further than Sum and Product](http://stackoverflow.com/a/21395817), although I'm still not clear on how far that can be pushed in this context to make things more useful.
+
+So far, none of the interpreters we've defined have done any IO.  The next post will look at our options for dealing with effects in our DSLs and interpreters.
+
+<!--[Questions? Comments?](TODO)-->
