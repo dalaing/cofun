@@ -154,7 +154,7 @@ findLimit' = do
 
 That's all well and good for the DSL, but we now need to update our interpreter to work with it.
 
-Remember that we had an underlying functor for our interpreter
+Remember that we had an underlying functor for our interpreter:
 ```haskell
 data CoAdderF k = CoAdderF {
     addH   :: Int -> (Bool,k)
@@ -313,7 +313,7 @@ type CoAdderF = CoAddF :*: CoClearF :*: CoTotalF
 -- Pairing instances for each of AddF / CoAddF, ClearF / CoClearF and TotalF / CoTotalF
 ```
 
-Everything should work as before, but we've gained the ability to mix and match functionality in both the DSL and the interpreter.
+Everything should work out as before, and we've gained the ability to mix and match functionality in both the DSL and the interpreter.
 
 Even though we have the parts of the interpreter separated out, they still interact via the underlying comonad transformers.
 This provides another axis for combination and reuse.
@@ -322,7 +322,7 @@ For example, you can write reusable code on top of component `X`, you can write 
 
 Lots of fun to be had.
 
-# Conclusion
+# Conclusion and open questions
 
 We now have a decent separation of concerns for our DSL and interpreter, and the ability to mix and match DSLs and interpreters together.
 
@@ -330,6 +330,15 @@ It also means that we can write the code for these things in a context where we 
 This is increases the scope for reuse and decreases the scope for writing misbehaving code, and I'm a fan of both of those.
 
 I'm still interested in how to do better with the "Data types a la carte" machinery.
+With the current machinery, we need to make sure that our `Sum`s and `Product`s have the same components in the same order.
+It feels like it should be possible to do significantly better than this, such that:
+
+* the components are guaranteed to be unique and the order doesn't matter (effectively a Set)
+    * this should also deal with the current problem of asymmetry
+* if the `Sum` components are a subset of the `Product` components we can automatically create a `Pairing` from the `Pairing`s between the components.
+
+I'll probably tinker with this eventually, but if someone gets there before I do I'll be pretty grateful.
+
 I'm also curious about whether we can [go even further than Sum and Product](http://stackoverflow.com/a/21395817), although I'm still not clear on how far that can be pushed in this context to make things more useful.
 
 So far, none of the interpreters we've defined have done any IO.  The next post will look at our options for dealing with effects in our DSLs and interpreters.
