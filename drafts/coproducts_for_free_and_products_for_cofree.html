@@ -34,20 +34,24 @@
     </div>
     <div class="panel-body">
         <h1 id="coproducts-for-free-monads">Coproducts for free monads</h1>
+<p>In the last two posts, we have <a href="../posts/free_and_cofree.html">built a DSL from a free monad and the corresponding interpreter from a cofree comonad</a> and <a href="../posts/monad_transformers_and_comonad_transformers.html">cleaned up the interpreter with comonad transformers</a>.</p>
+<p>The comonad transformers helped to factor out common concerns - in this case, passing in configuration and handling state.</p>
+<p>We can out our concerns even further than this.</p>
 <p>The underlying functor for our DSL is</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">AdderF</span> k <span class="fu">=</span>
     <span class="dt">Add</span> <span class="dt">Int</span> (<span class="dt">Bool</span> <span class="ot">-&gt;</span> k)
   <span class="fu">|</span> <span class="dt">Clear</span> k
   <span class="fu">|</span> <span class="dt">Total</span> (<span class="dt">Int</span> <span class="ot">-&gt;</span> k)</code></pre></div>
-<p>You might have noticed that these are independent of one another as far as the functor instance and the free monad go. Or you might have read <a href="http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.101.4131">Datatypes a la carte</a>.</p>
-<p>As an aside, if you haven’t read ‘Datatypes a la carte’ before you should give it a go. It’s really well written, and if you’ve followed up to this point then you’re probably ready for it. I tried to read it very early on in my Haskell journey and ended up slowly backing away, but I’m glad I doubled back around to it eventually.</p>
-<p>You can break the independent parts out</p>
+<p>You might have noticed that the three constructors are independent of one another as far as the functor instance and the free monad go. You might also have read <a href="http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.101.4131">Data types a la carte</a>.</p>
+<p>As an aside, if you haven’t read ‘Data types a la carte’ before you should give it a go. It’s really well written, and if you’ve followed up to this point then you’re probably ready for it. I tried to read it very early on in my Haskell journey and ended up slowly backing away, but I’m glad I doubled back around to it eventually.</p>
+<p>Anyhow.</p>
+<p>We can break the independent parts out:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">AddF</span> k <span class="fu">=</span> <span class="dt">Add</span> <span class="dt">Int</span> (<span class="dt">Bool</span> <span class="ot">-&gt;</span> k)
 
 <span class="kw">data</span> <span class="dt">ClearF</span> k <span class="fu">=</span> <span class="dt">Clear</span> k
 
 <span class="kw">data</span> <span class="dt">TotalF</span> k <span class="fu">=</span> <span class="dt">Total</span> (<span class="dt">Int</span> <span class="ot">-&gt;</span> k)</code></pre></div>
-<p>and you can write functor instances for these</p>
+<p>and we can write <code>Functor</code> instances for these:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Functor</span> <span class="dt">AddF</span> <span class="kw">where</span>
   fmap f (<span class="dt">Add</span> x k) <span class="fu">=</span> <span class="dt">Add</span> x (f <span class="fu">.</span> k)
 
@@ -56,39 +60,88 @@
 
 <span class="kw">instance</span> <span class="dt">Functor</span> <span class="dt">TotalF</span> <span class="kw">where</span>
   fmap f (<span class="dt">Total</span> k) <span class="fu">=</span> <span class="dt">Total</span> (f <span class="fu">.</span> k)</code></pre></div>
-<p>Using the <code>Sum</code> functor, we can recover the old <code>AdderF</code>. <a href="https://hackage.haskell.org/package/transformers/docs/Data-Functor-Sum.html">Sum</a> comes from <code>transformers</code>, and makes a <code>Functor</code> from the sum of two <code>Functors</code>.</p>
-<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">{-# LANGUAGE TypeOperatoes #-}</span>
+<p>We can now recover <code>AdderF</code> by using <a href="https://hackage.haskell.org/package/transformers/docs/Data-Functor-Sum.html"><code>Sum</code></a>, which makes a <code>Functor</code> from the sum of two other <code>Functors</code>.</p>
+<p>The relevant bits of <code>Sum</code> are</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Sum</span> f g a <span class="fu">=</span> <span class="dt">InL</span> (f a) <span class="fu">|</span> <span class="dt">InR</span> (g a)
 
-<span class="co">-- we introduce a type operator to match &quot;Datatypes a la carte&quot;</span>
+<span class="kw">instance</span> (<span class="dt">Functor</span> f, <span class="dt">Functor</span> g) <span class="ot">=&gt;</span> <span class="dt">Functor</span> (<span class="dt">Sum</span> f g) <span class="kw">where</span>
+  fmap f (<span class="dt">InL</span> x) <span class="fu">=</span> <span class="dt">InL</span> (fmap f x)
+  fmap f (<span class="dt">InR</span> x) <span class="fu">=</span> <span class="dt">InR</span> (fmap f x)</code></pre></div>
+<p>and we end up with</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">{-# LANGUAGE TypeOperators #-}</span>
+
+<span class="co">-- we introduce a type operator to match &quot;Data types a la carte&quot; and Dan Piponi's post on free and cofree</span>
 <span class="kw">type</span> f <span class="fu">:+:</span> g <span class="fu">=</span> <span class="dt">Sum</span> f g
 
 <span class="kw">type</span> <span class="dt">AdderF</span> <span class="fu">=</span> <span class="dt">AddF</span> <span class="fu">:+:</span> <span class="dt">ClearF</span> <span class="fu">:+:</span> <span class="dt">TotalF</span></code></pre></div>
-<p>And, with some help from the typeclass machinery introduced in “Datatypes a la carte”, we can make our combinators more flexible.</p>
-<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"></code></pre></div>
-<p>TODO explain why this is good / useful</p>
-<p>This works with <code>findLimit</code></p>
-<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"></code></pre></div>
-<p>but we can make that more flexible as well.</p>
-<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"></code></pre></div>
+<p>which will behave in the same manner the old <code>AdderF</code> as far as the <code>Functor</code> instance - and hence the free monad - is concerned.</p>
+<h2 id="classier-coproducts">Classier coproducts</h2>
+<p>With some help from the typeclass machinery introduced in “Data types a la carte”, we can make our combinators more flexible.</p>
+<p>The relevant machinery is as follows:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">class</span> (<span class="dt">Functor</span> sub, <span class="dt">Functor</span> sup) <span class="ot">=&gt;</span> sub <span class="fu">:&lt;:</span> sup <span class="kw">where</span>
+<span class="ot">  inj ::</span> sub a <span class="ot">-&gt;</span> sup a
+
+<span class="kw">instance</span> <span class="dt">Functor</span> f <span class="ot">=&gt;</span> f <span class="fu">:&lt;:</span> f <span class="kw">where</span>
+  inj <span class="fu">=</span> id
+
+<span class="kw">instance</span> (<span class="dt">Functor</span> f, <span class="dt">Functor</span> g) <span class="ot">=&gt;</span> f <span class="fu">:&lt;:</span> (f <span class="fu">:+:</span> g) <span class="kw">where</span>
+  inj <span class="fu">=</span> <span class="dt">InL</span>
+
+<span class="kw">instance</span> (<span class="dt">Functor</span> f, <span class="dt">Functor</span> g, <span class="dt">Functor</span> h, f <span class="fu">:&lt;:</span> g) <span class="ot">=&gt;</span> f <span class="fu">:&lt;:</span> (h <span class="fu">:+:</span> g) <span class="kw">where</span>
+  inj <span class="fu">=</span> <span class="dt">InR</span> <span class="fu">.</span> inj</code></pre></div>
+<p>This allows us to set up a constraint <code>f :&lt;: g</code>, which asserts that <code>f</code> is somewhere in the sum of functors <code>g</code>. Where that constraint holds we can also convert an <code>f</code> into a <code>g</code> with <code>inj</code>.</p>
+<p>As an aside, Phil Wadler <a href="http://wadler.blogspot.com.au/2008/02/data-types-la-carte.html">noted</a> that the above machinery is asymmetric - which means that while</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell">f <span class="fu">:&lt;:</span> d <span class="fu">:+:</span> e <span class="fu">:+:</span> f <span class="fu">:+:</span> g</code></pre></div>
+<p>is fine</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell">f <span class="fu">:&lt;:</span> d <span class="fu">:+:</span> (e <span class="fu">:+:</span> f) <span class="fu">:+:</span> g</code></pre></div>
+<p>is not.</p>
+<p>There are a few solutions posted in the comments section of that post. I’m not sure what the current best practice is on that front. I’ll be looking into it later, but if anyone has any pointers or thoughts on the topic I’d love to hear about it.</p>
+<p>For illustrating the technique, it’s fine as long as we’re careful.</p>
+<p>With the new tool in the toolbox, we can now do the following:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">add ::</span> (<span class="dt">MonadFree</span> f m, <span class="dt">AddF</span> <span class="fu">:&lt;:</span> f) <span class="ot">=&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> m <span class="dt">Bool</span>
+add x <span class="fu">=</span> liftF <span class="fu">.</span> inj <span class="fu">$</span> <span class="dt">Add</span> x id</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">clear ::</span> (<span class="dt">MonadFree</span> f m, <span class="dt">ClearF</span> <span class="fu">:&lt;:</span> f) <span class="ot">=&gt;</span> m ()
+clear <span class="fu">=</span> liftF <span class="fu">.</span> inj <span class="fu">$</span> <span class="dt">Clear</span> ()</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">total ::</span> (<span class="dt">MonadFree</span> f m, <span class="dt">TotalF</span> <span class="fu">:&lt;:</span> f) <span class="ot">=&gt;</span> m <span class="dt">Int</span>
+total <span class="fu">=</span> liftF <span class="fu">.</span> inj <span class="fu">$</span> <span class="dt">Total</span> id</code></pre></div>
+<p>These can be put in separate modules and imported as needed by client code.</p>
+<p>That’s probably not so impressive in this case. As a more impressive example, we could build up separate DSLs for authentication, database access and logging, and then mix and match to get whatever custom combination we needed, with access to any code we’d built up on top of those DSLS.</p>
+<p>To see how this looks, we can update <code>findLimit</code> to work in a larger number of contexts:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">findLimit ::</span> (<span class="dt">MonadFree</span> f m, <span class="dt">AddF</span> <span class="fu">:&lt;:</span> f, <span class="dt">ClearF</span> <span class="fu">:&lt;:</span> f, <span class="dt">TotalF</span> <span class="fu">:&lt;:</span> f) <span class="ot">=&gt;</span> m <span class="dt">Int</span>
+findLimit <span class="fu">=</span> <span class="kw">do</span>
+   <span class="co">-- capture the old count</span>
+   t <span class="ot">&lt;-</span> total
+   <span class="co">-- clear the count and the state</span>
+   clear
+   r <span class="ot">&lt;-</span> execStateT findLimit' <span class="dv">0</span>
+   <span class="co">-- restore the old count</span>
+   clear
+   _ <span class="ot">&lt;-</span> add t
+   return r
+
+<span class="ot">findLimit' ::</span> (<span class="dt">MonadFree</span> f m, <span class="dt">AddF</span> <span class="fu">:&lt;:</span> f) <span class="ot">=&gt;</span> <span class="dt">StateT</span> <span class="dt">Int</span> m ()
+findLimit' <span class="fu">=</span> <span class="kw">do</span>
+  r <span class="ot">&lt;-</span> lift <span class="fu">$</span> add <span class="dv">1</span>
+  when r <span class="fu">$</span> <span class="kw">do</span>
+    modify (<span class="fu">+</span> <span class="dv">1</span>)
+    findLimit'</code></pre></div>
 <h1 id="products-for-cofree-comonads">Products for cofree comonads</h1>
-<p>Recall that we had an underlying functor for our interpreter</p>
+<p>That’s all well and good for the DSL, but we now need to update our interpreter to work with it.</p>
+<p>Remember that we had an underlying functor for our interpreter</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">CoAdderF</span> k <span class="fu">=</span> <span class="dt">CoAdderF</span> {
 <span class="ot">    addH   ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> (<span class="dt">Bool</span>,k)
   ,<span class="ot"> clearH ::</span> k
   ,<span class="ot"> totalH ::</span> (<span class="dt">Int</span>,k)
   }</code></pre></div>
 <p>and a pairing between our DSL and interpreter functors</p>
-<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Pairing</span> <span class="dt">CoAdderF</span> <span class="dt">AdderF</span> <span class="kw">where</span>
-  pair f (<span class="dt">CoAdderF</span> a _ _) (<span class="dt">Add</span> x k) <span class="fu">=</span> pair f (a x) k
-  pair f (<span class="dt">CoAdderF</span> _ c _) (<span class="dt">Clear</span> k) <span class="fu">=</span> f c k
-  pair f (<span class="dt">CoAdderF</span> _ _ t) (<span class="dt">Total</span> k) <span class="fu">=</span> pair f t k</code></pre></div>
-<p>We can factor those out into independent peices as well:</p>
+<p>We can factor those out into independent pieces as well.</p>
+<p><code>CoAdderF</code> gets broken in a similar manner to what we did with <code>AdderF</code>:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">CoAddF</span> k <span class="fu">=</span> <span class="dt">CoAdd</span> (<span class="dt">Int</span> <span class="ot">-&gt;</span> (<span class="dt">Bool</span>, k))
 
 <span class="kw">data</span> <span class="dt">CoClearF</span> k <span class="fu">=</span> <span class="dt">CoClear</span> k
 
 <span class="kw">data</span> <span class="dt">CoTotalF</span> k <span class="fu">=</span> <span class="dt">CoTotal</span> (<span class="dt">Int</span>, k)</code></pre></div>
-<p>and provide the <code>Functor</code> instances:</p>
+<p>and we can easily make the corresponding <code>Functor</code> instances:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Functor</span> <span class="dt">CoAddF</span> <span class="kw">where</span>
   fmap f (<span class="dt">CoAdd</span> a) <span class="fu">=</span> <span class="dt">CoAdd</span> (fmap (fmap f) a)
 
@@ -96,27 +149,73 @@
   fmap f (<span class="dt">CoClear</span> k) <span class="fu">=</span> <span class="dt">CoClear</span> (f k)
 
 <span class="kw">instance</span> <span class="dt">Functor</span> <span class="dt">CoTotalF</span> <span class="kw">where</span>
-    fmap f (<span class="dt">CoTotal</span> t) <span class="fu">=</span> <span class="dt">CoTotal</span> (fmap f t)</code></pre></div>
-<p>In the same way that we used the <code>Sum</code> functor for the DSL, we can use the <code>Product</code> functor to recover the old <code>CoAdderF</code>.</p>
-<p><a href="https://hackage.haskell.org/package/transformers/docs/Data-Functor-Product.html">Product</a> comes from <code>transformers</code>, and makes a <code>Functor</code> from the product of two <code>Functors</code>.</p>
-<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">{-# LANGUAGE TypeOperatoes #-}</span>
+  fmap f (<span class="dt">CoTotal</span> t) <span class="fu">=</span> <span class="dt">CoTotal</span> (fmap f t)</code></pre></div>
+<p>In the same way that we used the <code>Sum</code> to recover <code>AdderF</code>, we can use <a href="https://hackage.haskell.org/package/transformers/docs/Data-Functor-Sum.html"><code>Product</code></a> to recover <code>CoAdderF</code>.</p>
+<p>The relevant bits of <code>Product</code> are</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Product</span> f g a <span class="fu">=</span> <span class="dt">Pair</span> (f a) (g a)
 
-<span class="co">-- we introduce a type operator to match &quot;Datatypes a la carte&quot;</span>
+<span class="kw">instance</span> (<span class="dt">Functor</span> f, <span class="dt">Functor</span> g) <span class="ot">=&gt;</span> <span class="dt">Functor</span> (<span class="dt">Product</span> f g) <span class="kw">where</span>
+  fmap h (<span class="dt">Pair</span> f g) <span class="fu">=</span> <span class="dt">Pair</span> (fmap h f) (fmap h g)</code></pre></div>
+<p>which gives us</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">{-# LANGUAGE TypeOperators #-}</span>
+
+<span class="co">-- we introduce a type operator to match &quot;Data types a la carte&quot; and Dan Piponi's post on free and cofree</span>
 <span class="kw">type</span> f <span class="fu">:*:</span> g <span class="fu">=</span> <span class="dt">Product</span> f g
 
 <span class="kw">type</span> <span class="dt">CoAdderF</span> <span class="fu">=</span> <span class="dt">CoAddF</span> <span class="fu">:*:</span> <span class="dt">CoClearF</span> <span class="fu">:*:</span> <span class="dt">CoTotalF</span></code></pre></div>
-<p>TODO mkCoAdder</p>
-<p>TODO explain cross talk via underlying transformers</p>
-<h1 id="pairing-coproducts-and-products">Pairing coproducts and products</h1>
-<p>There are pairings between <code>Sum</code> and <code>Product</code> functors if there are pairings between their components</p>
+<p>Again, the new version of <code>CoAdderF</code> will behave in the same way as the old version as far as we’re concerned.</p>
+<p>Our old interpreter functions had types:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">coAdd   ::</span> (<span class="dt">ComonadEnv</span> <span class="dt">Int</span> w, <span class="dt">ComonadStore</span> <span class="dt">Int</span> w) <span class="ot">=&gt;</span> w a <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> (<span class="dt">Bool</span>, w a)
+<span class="ot">coClear ::</span> <span class="dt">ComonadStore</span> <span class="dt">Int</span> w <span class="ot">=&gt;</span> w a <span class="ot">-&gt;</span> w a
+<span class="ot">coTotal ::</span> <span class="dt">ComonadStore</span> <span class="dt">Int</span> w <span class="ot">=&gt;</span> w a <span class="ot">-&gt;</span> (<span class="dt">Int</span>, w a)</code></pre></div>
+<p>but the new ones have a constructor wrapping up most of the details</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">coAdd   ::</span> (<span class="dt">ComonadEnv</span> <span class="dt">Int</span> w, <span class="dt">ComonadStore</span> <span class="dt">Int</span> w) <span class="ot">=&gt;</span> w a <span class="ot">-&gt;</span> <span class="dt">CoAddF</span> (w a)
+<span class="ot">coClear ::</span> <span class="dt">ComonadStore</span> <span class="dt">Int</span> w <span class="ot">=&gt;</span> w a <span class="ot">-&gt;</span> <span class="dt">CoClearF</span> (w a)
+<span class="ot">coTotal ::</span> <span class="dt">ComonadStore</span> <span class="dt">Int</span> w <span class="ot">=&gt;</span> w a <span class="ot">-&gt;</span> <span class="dt">CoTotalF</span>(w a)</code></pre></div>
+<p>Aside from the changes associated with those new constructors, the implementations don’t change much:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">coAdd ::</span> (<span class="dt">ComonadEnv</span> <span class="dt">Int</span> w, <span class="dt">ComonadStore</span> <span class="dt">Int</span> w) <span class="ot">=&gt;</span> w a <span class="ot">-&gt;</span> <span class="dt">CoAddF</span> (w a)
+coAdd w <span class="fu">=</span> <span class="dt">CoAdd</span> <span class="fu">$</span> \x <span class="ot">-&gt;</span>
+  <span class="kw">let</span>
+    count <span class="fu">=</span> pos w
+    limit <span class="fu">=</span> ask w
+    count' <span class="fu">=</span> count <span class="fu">+</span> x
+    test <span class="fu">=</span> count' <span class="fu">&lt;=</span> limit
+    next <span class="fu">=</span> <span class="kw">if</span> test <span class="kw">then</span> count' <span class="kw">else</span> count
+  <span class="kw">in</span>
+    (test, seek next w)</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">coClear ::</span> <span class="dt">ComonadStore</span> <span class="dt">Int</span> w <span class="ot">=&gt;</span> w a <span class="ot">-&gt;</span> <span class="dt">CoClearF</span> (w a)
+coClear <span class="fu">=</span> <span class="dt">CoClear</span> <span class="fu">.</span> seek <span class="dv">0</span></code></pre></div>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">coTotal ::</span> <span class="dt">ComonadStore</span> <span class="dt">Int</span> w <span class="ot">=&gt;</span> w a <span class="ot">-&gt;</span> <span class="dt">CoTotalF</span> (w a)
+coTotal w <span class="fu">=</span> <span class="dt">CoTotal</span> (pos w, w)</code></pre></div>
+<p>Just like the components of our DSL, the components of the interpreter can all be placed in different modules and mixed and matched as we like.</p>
+<p>We just need something to stitch these together. Since <code>coiter</code> takes a function <code>a -&gt; f a</code> and <code>coiterT</code> takes a function <code>w a -&gt; f (w a)</code>, we should be able to do our stitching in terms of <code>a -&gt; f a</code> for the various components and have it work for either <code>coiter</code> or <code>coiterT</code>.</p>
+<p>What we need is something to combine two of these functions into a product:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">(*:*) ::</span> (<span class="dt">Functor</span> f, <span class="dt">Functor</span> g) <span class="ot">=&gt;</span> (a <span class="ot">-&gt;</span> f a) <span class="ot">-&gt;</span> (a <span class="ot">-&gt;</span> g a) <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> (f <span class="fu">:*:</span> g) a
+(<span class="fu">*:*</span>) <span class="fu">=</span> liftA2 <span class="dt">Pair</span></code></pre></div>
+<p>which we can use to update the definition of <code>mkCoAdder</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">CoAdderF</span> <span class="fu">=</span> <span class="dt">CoAddF</span> <span class="fu">:*:</span> <span class="dt">CoClearF</span> <span class="fu">:*:</span> <span class="dt">CoTotalF</span>
+
+<span class="ot">mkCoAdder ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">CoFreeT</span> <span class="dt">CoAdderF</span> (<span class="dt">StoreT</span> <span class="dt">Int</span> (<span class="dt">EnvT</span> <span class="dt">Int</span> <span class="dt">Identity</span>)) ()
+mkCoAdder limit count <span class="fu">=</span>
+    coiterT next start
+  <span class="kw">where</span>
+    next <span class="fu">=</span> coAdd <span class="fu">*:*</span> coClear <span class="fu">*:*</span> coTotal
+    start <span class="fu">=</span> flip <span class="dt">StoreT</span> count <span class="fu">.</span> <span class="dt">EnvT</span> limit <span class="fu">.</span> <span class="dt">Identity</span> <span class="fu">$</span> const ()</code></pre></div>
+<h1 id="pairings">Pairings</h1>
+<p>The last piece of the puzzle is to establish a <code>Pairing</code> between <code>AdderF</code> and <code>CoAdderF</code>. Previously, this was</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Pairing</span> <span class="dt">CoAdderF</span> <span class="dt">AdderF</span> <span class="kw">where</span>
+  pair f (<span class="dt">CoAdderF</span> a _ _) (<span class="dt">Add</span> x k) <span class="fu">=</span> pair f (a x) k
+  pair f (<span class="dt">CoAdderF</span> _ c _) (<span class="dt">Clear</span> k) <span class="fu">=</span> f c k
+  pair f (<span class="dt">CoAdderF</span> _ _ t) (<span class="dt">Total</span> k) <span class="fu">=</span> pair f t k</code></pre></div>
+<p>There are pairings between <code>Sum</code> and <code>Product</code> functors if there are pairings between their components:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> (<span class="dt">Pairing</span> f f', <span class="dt">Pairing</span> g g') <span class="ot">=&gt;</span> <span class="dt">Pairing</span> (f <span class="fu">:+:</span> g) (f' <span class="fu">:*:</span> g') <span class="kw">where</span>
-  pair p (<span class="dt">LeftF</span> x) (a <span class="fu">:*:</span> _) <span class="fu">=</span> pair p x a
-  pair p (<span class="dt">RightF</span> x) (_ <span class="fu">:*:</span> b) <span class="fu">=</span> pair p x b
+  pair p (<span class="dt">InL</span> x) (<span class="dt">Pair</span> a _) <span class="fu">=</span> pair p x a
+  pair p (<span class="dt">InR</span> x) (<span class="dt">Pair</span> _ b) <span class="fu">=</span> pair p x b
 
 <span class="kw">instance</span> (<span class="dt">Pairing</span> f f', <span class="dt">Pairing</span> g g') <span class="ot">=&gt;</span> <span class="dt">Pairing</span> (f <span class="fu">:*:</span> g) (f' <span class="fu">:+:</span> g') <span class="kw">where</span>
-  pair p (a <span class="fu">:*:</span> _) (<span class="dt">LeftF</span> x) <span class="fu">=</span> pair p a x
-  pair p (_ <span class="fu">:*:</span> b) (<span class="dt">RightF</span> x) <span class="fu">=</span> pair p b x</code></pre></div>
-<p>This means that we only need to provide pairings between the corresponding functors from the DSL and interpreter functors, and we’ll be back to where we were:</p>
+  pair p (<span class="dt">Pair</span> a _) (<span class="dt">InL</span> x) <span class="fu">=</span> pair p a x
+  pair p (<span class="dt">Pair</span> _ b) (<span class="dt">InR</span> x) <span class="fu">=</span> pair p b x</code></pre></div>
+<p>This means that we only need to provide pairings between the corresponding functors from the DSL and interpreter functors:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Pairing</span> <span class="dt">CoAddF</span> <span class="dt">AddF</span> <span class="kw">where</span>
   pair f (<span class="dt">CoAdd</span> a) (<span class="dt">Add</span> x k) <span class="fu">=</span> pair f (a x) k
 
@@ -124,15 +223,32 @@
   pair f (<span class="dt">CoClear</span> c) (<span class="dt">Clear</span> k) <span class="fu">=</span> f c k
 
 <span class="kw">instance</span> <span class="dt">Pairing</span> <span class="dt">CoTotalF</span> <span class="dt">TotalF</span> <span class="kw">where</span>
-    pair f (<span class="dt">CoTotal</span> t) (<span class="dt">Total</span> k) <span class="fu">=</span> pair f t k</code></pre></div>
+  pair f (<span class="dt">CoTotal</span> t) (<span class="dt">Total</span> k) <span class="fu">=</span> pair f t k</code></pre></div>
+<p>and we’ll be back to where we were:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">AdderF</span>   <span class="fu">=</span> <span class="dt">AddF</span> <span class="fu">:+:</span> <span class="dt">ClearF</span> <span class="fu">:+:</span> <span class="dt">TotalF</span>
+<span class="co">-- There is a Functor instance for AdderF if there are</span>
+<span class="co">-- Functor instances for each of AddF, ClearF and TotalF</span>
+
+<span class="kw">type</span> <span class="dt">CoAdderF</span> <span class="fu">=</span> <span class="dt">CoAddF</span> <span class="fu">:*:</span> <span class="dt">CoClearF</span> <span class="fu">:*:</span> <span class="dt">CoTotalF</span>
+<span class="co">-- There is a Functor instance for CoAdder if there are</span>
+<span class="co">-- Functor instances for each of CoAddF, CoClearF and CoTotalF</span>
+
+<span class="co">-- There is a Pairing instance for CoAdderF an AdderF if there are</span>
+<span class="co">-- Pairing instances for each of AddF / CoAddF, ClearF / CoClearF and TotalF / CoTotalF</span></code></pre></div>
+<p>Everything should work as before, but we’ve gained the ability to mix and match functionality in both the DSL and the interpreter.</p>
+<p>Even though we have the parts of the interpreter separated out, they still interact via the underlying comonad transformers. This provides another axis for combination and reuse.</p>
+<p>For example, you can write reusable code on top of component <code>X</code>, you can write reusable code on top of component <code>Y</code>, and you can also write reusable code on top of the combination of components <code>X</code> and <code>Y</code> and a <code>ComonadStore Int w</code> context.</p>
+<p>Lots of fun to be had.</p>
 <h1 id="conclusion">Conclusion</h1>
-<p>TODO why this is good</p>
-<p>TODO opens the door to good things, allows a lighter touch, networking related results coming soon</p>
-<p>TODO at end - can we use products in a meaningful way in free? timing and auth? - can we use compose and friends to make things interestings?</p>
+<p>We now have a decent separation of concerns for our DSL and interpreter, and the ability to mix and match DSLs and interpreters together.</p>
+<p>It also means that we can write the code for these things in a context where we only have access to the things that we really need. This is increases the scope for reuse and decreases the scope for writing misbehaving code, and I’m a fan of both of those.</p>
+<p>I’m still interested in how to do better with the “Data types a la carte” machinery. I’m also curious about whether we can <a href="http://stackoverflow.com/a/21395817">go even further than Sum and Product</a>, although I’m still not clear on how far that can be pushed in this context to make things more useful.</p>
+<p>So far, none of the interpreters we’ve defined have done any IO. The next post will look at our options for dealing with effects in our DSLs and interpreters.</p>
+<!--[Questions? Comments?](TODO)-->
     </div>
     
     <div class="panel-footer">
-        <h5>Posted on May 25, 2015 </h5>
+        <h5>Posted on June 28, 2015 </h5>
     </div>
     
 </div>
