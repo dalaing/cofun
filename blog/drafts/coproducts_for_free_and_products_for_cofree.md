@@ -9,7 +9,7 @@ In the last two posts, we have [built a DSL from a free monad and the correspond
 
 The comonad transformers helped to factor out common concerns - in this case, passing in configuration and handling state.
 
-We can out our concerns even further than this.
+We can separate out our concerns even further than this.
 
 The underlying functor for our DSL is
 ```haskell
@@ -19,11 +19,11 @@ data AdderF k =
   | Total (Int -> k)
 ```
 
-You might have noticed that the three constructors are independent of one another as far as the functor instance and the free monad go.
+You might have noticed that the three constructors are independent of one another with respect to the `Functor` instance and the free monad.
 You might also have read [Data types a la carte](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.101.4131).
 
 As an aside, if you haven't read 'Data types a la carte' before you should give it a go.
-It's really well written, and if you've followed up to this point then you're probably ready for it.
+It's really well written, and if you've followed the series up to this point then you're probably ready for it.
 I tried to read it very early on in my Haskell journey and ended up slowly backing away, but I'm glad I doubled back around to it eventually.
 
 Anyhow.
@@ -105,7 +105,7 @@ There are a few solutions posted in the comments section of that post.
 I'm not sure what the current best practice is on that front.
 I'll be looking into it later, but if anyone has any pointers or thoughts on the topic I'd love to hear about it.
 
-For illustrating the technique, it's fine as long as we're careful.
+The above machine is fine for this post, as long as we're reasonably careful.
 
 With the new tool in the toolbox, we can now do the following:
 ```haskell
@@ -126,7 +126,7 @@ total = liftF . inj $ Total id
 These can be put in separate modules and imported as needed by client code.
 
 That's probably not so impressive in this case.
-As a more impressive example, we could build up separate DSLs for authentication, database access and logging, and then mix and match to get whatever custom combination we needed, with access to any code we'd built up on top of those DSLS.
+As a more impressive example, we could build up separate DSLs for authentication, database access and logging, and then mix and match to get whatever custom combination we needed, with the ability to make use of  any code we'd built up on top of the individual DSLs (or combinations of those DSLs).
 
 To see how this looks, we can update `findLimit` to work in a larger number of contexts:
 ```haskell
@@ -149,6 +149,30 @@ findLimit' = do
     modify (+ 1)
     findLimit'
 ```
+
+While it looks pretty similar to how it did before, we can now use `findLimit` with a free monad that has additional components in its underlying functor.
+
+We could also have broken things up further, with
+```haskell
+reset :: (MonadFree f m, ClearF :<: f, TotalF :<: f) => m Int
+reset = do
+   -- capture the old count
+   t <- total
+   -- clear the count and the state
+   clear
+   return t
+```
+and
+```haskell
+restore :: (MonadFree f m, AddF :<: f, ClearF :<: f) => Int -> m ()
+restore = do
+   -- restore the old count
+   clear
+   _ <- add t
+   return ()
+```
+
+Restricting our types down to just the things that we need is great - it provides more info about what the functions can and cannot do, and it means that there are less moving parts and so less ways to write the functions incorrectly.
 
 # Products for cofree comonads
 
@@ -326,8 +350,8 @@ Lots of fun to be had.
 
 We now have a decent separation of concerns for our DSL and interpreter, and the ability to mix and match DSLs and interpreters together.
 
-It also means that we can write the code for these things in a context where we only have access to the things that we really need.
-This is increases the scope for reuse and decreases the scope for writing misbehaving code, and I'm a fan of both of those.
+It also means that we can write functions that work with the DSL or interpreter in a context where we only have access to the components that we really need.
+This increases the scope for reuse and decreases the scope for writing misbehaving code, and I'm a fan of both of those.
 
 I'm still interested in how to do better with the "Data types a la carte" machinery.
 With the current machinery, we need to make sure that our `Sum`s and `Product`s have the same components in the same order.
@@ -337,9 +361,11 @@ It feels like it should be possible to do significantly better than this, such t
     * this should also deal with the current problem of asymmetry
 * if the `Sum` components are a subset of the `Product` components we can automatically create a `Pairing` from the `Pairing`s between the components.
 
-I'll probably tinker with this eventually, but if someone gets there before I do I'll be pretty grateful.
+I'll probably tinker with this eventually, but if someone gets there before I do I'll be pretty happy.
 
 I'm also curious about whether we can [go even further than Sum and Product](http://stackoverflow.com/a/21395817), although I'm still not clear on how far that can be pushed in this context to make things more useful.
+
+There's still a few posts to come before I've covered everything I mentioned in the talk.
 
 So far, none of the interpreters we've defined have done any IO.  The next post will look at our options for dealing with effects in our DSLs and interpreters.
 
