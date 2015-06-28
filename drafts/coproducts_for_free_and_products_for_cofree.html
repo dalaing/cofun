@@ -36,14 +36,14 @@
         <h1 id="coproducts-for-free-monads">Coproducts for free monads</h1>
 <p>In the last two posts, we have <a href="../posts/free_and_cofree.html">built a DSL from a free monad and the corresponding interpreter from a cofree comonad</a> and <a href="../posts/monad_transformers_and_comonad_transformers.html">cleaned up the interpreter with comonad transformers</a>.</p>
 <p>The comonad transformers helped to factor out common concerns - in this case, passing in configuration and handling state.</p>
-<p>We can out our concerns even further than this.</p>
+<p>We can separate out our concerns even further than this.</p>
 <p>The underlying functor for our DSL is</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">AdderF</span> k <span class="fu">=</span>
     <span class="dt">Add</span> <span class="dt">Int</span> (<span class="dt">Bool</span> <span class="ot">-&gt;</span> k)
   <span class="fu">|</span> <span class="dt">Clear</span> k
   <span class="fu">|</span> <span class="dt">Total</span> (<span class="dt">Int</span> <span class="ot">-&gt;</span> k)</code></pre></div>
-<p>You might have noticed that the three constructors are independent of one another as far as the functor instance and the free monad go. You might also have read <a href="http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.101.4131">Data types a la carte</a>.</p>
-<p>As an aside, if you haven’t read ‘Data types a la carte’ before you should give it a go. It’s really well written, and if you’ve followed up to this point then you’re probably ready for it. I tried to read it very early on in my Haskell journey and ended up slowly backing away, but I’m glad I doubled back around to it eventually.</p>
+<p>You might have noticed that the three constructors are independent of one another with respect to the <code>Functor</code> instance and the free monad. You might also have read <a href="http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.101.4131">Data types a la carte</a>.</p>
+<p>As an aside, if you haven’t read ‘Data types a la carte’ before you should give it a go. It’s really well written, and if you’ve followed the series up to this point then you’re probably ready for it. I tried to read it very early on in my Haskell journey and ended up slowly backing away, but I’m glad I doubled back around to it eventually.</p>
 <p>Anyhow.</p>
 <p>We can break the independent parts out:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">AddF</span> k <span class="fu">=</span> <span class="dt">Add</span> <span class="dt">Int</span> (<span class="dt">Bool</span> <span class="ot">-&gt;</span> k)
@@ -96,7 +96,7 @@
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell">f <span class="fu">:&lt;:</span> d <span class="fu">:+:</span> (e <span class="fu">:+:</span> f) <span class="fu">:+:</span> g</code></pre></div>
 <p>is not.</p>
 <p>There are a few solutions posted in the comments section of that post. I’m not sure what the current best practice is on that front. I’ll be looking into it later, but if anyone has any pointers or thoughts on the topic I’d love to hear about it.</p>
-<p>For illustrating the technique, it’s fine as long as we’re careful.</p>
+<p>The above machine is fine for this post, as long as we’re reasonably careful.</p>
 <p>With the new tool in the toolbox, we can now do the following:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">add ::</span> (<span class="dt">MonadFree</span> f m, <span class="dt">AddF</span> <span class="fu">:&lt;:</span> f) <span class="ot">=&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> m <span class="dt">Bool</span>
 add x <span class="fu">=</span> liftF <span class="fu">.</span> inj <span class="fu">$</span> <span class="dt">Add</span> x id</code></pre></div>
@@ -105,7 +105,7 @@ clear <span class="fu">=</span> liftF <span class="fu">.</span> inj <span class=
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">total ::</span> (<span class="dt">MonadFree</span> f m, <span class="dt">TotalF</span> <span class="fu">:&lt;:</span> f) <span class="ot">=&gt;</span> m <span class="dt">Int</span>
 total <span class="fu">=</span> liftF <span class="fu">.</span> inj <span class="fu">$</span> <span class="dt">Total</span> id</code></pre></div>
 <p>These can be put in separate modules and imported as needed by client code.</p>
-<p>That’s probably not so impressive in this case. As a more impressive example, we could build up separate DSLs for authentication, database access and logging, and then mix and match to get whatever custom combination we needed, with access to any code we’d built up on top of those DSLS.</p>
+<p>That’s probably not so impressive in this case. As a more impressive example, we could build up separate DSLs for authentication, database access and logging, and then mix and match to get whatever custom combination we needed, with the ability to make use of any code we’d built up on top of the individual DSLs (or combinations of those DSLs).</p>
 <p>To see how this looks, we can update <code>findLimit</code> to work in a larger number of contexts:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">findLimit ::</span> (<span class="dt">MonadFree</span> f m, <span class="dt">AddF</span> <span class="fu">:&lt;:</span> f, <span class="dt">ClearF</span> <span class="fu">:&lt;:</span> f, <span class="dt">TotalF</span> <span class="fu">:&lt;:</span> f) <span class="ot">=&gt;</span> m <span class="dt">Int</span>
 findLimit <span class="fu">=</span> <span class="kw">do</span>
@@ -125,6 +125,23 @@ findLimit' <span class="fu">=</span> <span class="kw">do</span>
   when r <span class="fu">$</span> <span class="kw">do</span>
     modify (<span class="fu">+</span> <span class="dv">1</span>)
     findLimit'</code></pre></div>
+<p>While it looks pretty similar to how it did before, we can now use <code>findLimit</code> with a free monad that has additional components in its underlying functor.</p>
+<p>We could also have broken things up further, with</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">reset ::</span> (<span class="dt">MonadFree</span> f m, <span class="dt">ClearF</span> <span class="fu">:&lt;:</span> f, <span class="dt">TotalF</span> <span class="fu">:&lt;:</span> f) <span class="ot">=&gt;</span> m <span class="dt">Int</span>
+reset <span class="fu">=</span> <span class="kw">do</span>
+   <span class="co">-- capture the old count</span>
+   t <span class="ot">&lt;-</span> total
+   <span class="co">-- clear the count and the state</span>
+   clear
+   return t</code></pre></div>
+<p>and</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">restore ::</span> (<span class="dt">MonadFree</span> f m, <span class="dt">AddF</span> <span class="fu">:&lt;:</span> f, <span class="dt">ClearF</span> <span class="fu">:&lt;:</span> f) <span class="ot">=&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> m ()
+restore <span class="fu">=</span> <span class="kw">do</span>
+   <span class="co">-- restore the old count</span>
+   clear
+   _ <span class="ot">&lt;-</span> add t
+   return ()</code></pre></div>
+<p>Restricting our types down to just the things that we need is great - it provides more info about what the functions can and cannot do, and it means that there are less moving parts and so less ways to write the functions incorrectly.</p>
 <h1 id="products-for-cofree-comonads">Products for cofree comonads</h1>
 <p>That’s all well and good for the DSL, but we now need to update our interpreter to work with it.</p>
 <p>Remember that we had an underlying functor for our interpreter:</p>
@@ -241,7 +258,7 @@ mkCoAdder limit count <span class="fu">=</span>
 <p>Lots of fun to be had.</p>
 <h1 id="conclusion-and-open-questions">Conclusion and open questions</h1>
 <p>We now have a decent separation of concerns for our DSL and interpreter, and the ability to mix and match DSLs and interpreters together.</p>
-<p>It also means that we can write the code for these things in a context where we only have access to the things that we really need. This is increases the scope for reuse and decreases the scope for writing misbehaving code, and I’m a fan of both of those.</p>
+<p>It also means that we can write functions that work with the DSL or interpreter in a context where we only have access to the components that we really need. This increases the scope for reuse and decreases the scope for writing misbehaving code, and I’m a fan of both of those.</p>
 <p>I’m still interested in how to do better with the “Data types a la carte” machinery. With the current machinery, we need to make sure that our <code>Sum</code>s and <code>Product</code>s have the same components in the same order. It feels like it should be possible to do significantly better than this, such that:</p>
 <ul>
 <li>the components are guaranteed to be unique and the order doesn’t matter (effectively a Set)
@@ -250,10 +267,11 @@ mkCoAdder limit count <span class="fu">=</span>
 </ul></li>
 <li>if the <code>Sum</code> components are a subset of the <code>Product</code> components we can automatically create a <code>Pairing</code> from the <code>Pairing</code>s between the components.</li>
 </ul>
-<p>I’ll probably tinker with this eventually, but if someone gets there before I do I’ll be pretty grateful.</p>
+<p>I’ll probably tinker with this eventually, but if someone gets there before I do I’ll be pretty happy.</p>
 <p>I’m also curious about whether we can <a href="http://stackoverflow.com/a/21395817">go even further than Sum and Product</a>, although I’m still not clear on how far that can be pushed in this context to make things more useful.</p>
+<p>There’s still a few posts to come before I’ve covered everything I mentioned in the talk.</p>
 <p>So far, none of the interpreters we’ve defined have done any IO. The next post will look at our options for dealing with effects in our DSLs and interpreters.</p>
-<!--[Questions? Comments?](TODO)-->
+<p><a href="https://www.reddit.com/r/haskell/comments/3beiti/coproducts_for_free_and_products_for_cofree/">Questions? Comments?</a></p>
     </div>
     
     <div class="panel-footer">
