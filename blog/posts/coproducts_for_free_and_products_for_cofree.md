@@ -369,4 +369,4 @@ There's still a few posts to come before I've covered everything I mentioned in 
 
 So far, none of the interpreters we've defined have done any IO.  The next post will look at our options for dealing with effects in our DSLs and interpreters.
 
-<!--[Questions? Comments?](TODO)-->
+[Questions? Comments?](https://www.reddit.com/r/haskell/comments/3beiti/coproducts_for_free_and_products_for_cofree/)

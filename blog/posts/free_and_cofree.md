@@ -473,7 +473,7 @@ The current version of our interpreter is manually handing both environment and 
 We can clean this up by using [comonad transformers](/posts/monad_transformers_and_comonad_transformers.html).
 This turns out to be pretty similar to working with monad transformers, down to the fact that we can use the transformers in either `transformers` or `mtl` style.
 
-We can break the DSL down into independent parts using coproducts, as covered in [Data types a la carte](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.101.4131).
+We can break the DSL down into independent parts using [coproducts](/posts/coproducts_for_free_and_products_for_cofree.html), as covered in [Data types a la carte](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.101.4131).
 In addition to this, we can factor out the independent parts of the interpreter using products.
 
 We can bring some other effects into the mix.
