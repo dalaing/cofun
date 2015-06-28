@@ -9,7 +9,7 @@
                    type="application/rss+xml" />
         <lastBuildDate>Sun, 28 Jun 2015 23:00:00 UT</lastBuildDate>
         <item>
-    <title>Coproducts for free, and products for cofree</title>
+    <title>Coproducts for free and products for cofree</title>
     <link>http://dlaing.org/cofun/posts/coproducts_for_free_and_products_for_cofree.html</link>
     <description><![CDATA[<h1 id="coproducts-for-free-monads">Coproducts for free monads</h1>
 <p>In the last two posts, we have <a href="/posts/free_and_cofree.html">built a DSL from a free monad and the corresponding interpreter from a cofree comonad</a> and <a href="/posts/monad_transformers_and_comonad_transformers.html">cleaned up the interpreter with comonad transformers</a>.</p>
