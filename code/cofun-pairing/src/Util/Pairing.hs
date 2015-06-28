@@ -3,6 +3,7 @@
 module Util.Pairing (
       Pairing(..)
     , pairEffect
+    , pairEffect'
     , PairingM(..)
     , pairEffectM
     ) where
@@ -31,6 +32,15 @@ pairEffect p s c = do
   case mb of
     Pure x -> return $ p (extract s) x
     Free gs -> pair (pairEffect p) (unwrap s) gs
+
+pairEffect' :: (Pairing f g, Comonad w, Monad m)
+           => (a -> b -> r) -> CofreeT f w (m a) -> FreeT g m b -> m r
+pairEffect' p s c = do
+  a  <- extract s
+  mb <- runFreeT c
+  case mb of
+    Pure x -> return $ p a x
+    Free gs -> pair (pairEffect' p) (unwrap s) gs
 
 class (Functor m, Functor f, Functor g) => PairingM f g m | f g -> m where
   pairM :: (a -> b -> m r) -> f a -> g b -> m r
