@@ -477,7 +477,7 @@ testConsole <span class="fu">=</span> pairEffect (\_ r <span class="ot">-&gt;</s
 <p>although we could just as easily have used a pure version of <code>mkCoAdder</code> stacked on top of the <code>Identity</code> comonad and <code>pairEffect</code> would have continued to work.</p>
 <h1 id="conclusion">Conclusion</h1>
 <p>We’ve now factored out the state and environment from the interpreter, but there are still aspects of both the DSL and the interpreter which are more strongly coupled than they need to be.</p>
-<p>We’ll start to deal with this in the next post, where we’ll use coproducts to break out the orthogonal parts of the the DSL and products to make a similar change to the interpreter. After that we’ll have a deeper look at making use of various effects in conjunction with free and cofree.</p>
+<p>We’ll start to deal with this in the <a href="../posts/coproducts_for_free_and_products_for_cofree.html">next post</a>, where we’ll use coproducts to break out the orthogonal parts of the the DSL and products to make a similar change to the interpreter. After that we’ll have a deeper look at making use of various effects in conjunction with free and cofree.</p>
 <p><a href="http://www.reddit.com/r/haskell/comments/39vaqj/monad_transformers_and_comonad_transformers/">Questions? Comments?</a></p>
     </div>
     
