@@ -4,7 +4,7 @@ module Components.Clear.Functors (
   , CoClearF(..)
   ) where
 
-import Components.Console (Console(..))
+import Components.Console (ConsoleClient(..), ConsoleServer(..))
 
 import           Util.Pairing (Pairing (..))
 
@@ -17,12 +17,6 @@ data ClearF k = Clear k
 instance Functor ClearF where
   fmap f (Clear k) = Clear (f k)
 
-instance Console ClearF where
-    prompt _ = ["clear"]
-    parser = do
-        void $ string "clear"
-        return $ Clear ()
-
 data CoClearF k = CoClear k
 
 instance Functor CoClearF where
@@ -30,3 +24,13 @@ instance Functor CoClearF where
 
 instance Pairing CoClearF ClearF where
     pair f (CoClear c) (Clear k) = f c k
+
+instance ConsoleClient ClearF where
+  prompt _ = ["clear"]
+  parser = do
+    void $ string "clear"
+    return $ Clear ()
+
+instance ConsoleServer CoClearF where
+  addResultLogging (CoClear k) = CoClear (return () <$ k)
+

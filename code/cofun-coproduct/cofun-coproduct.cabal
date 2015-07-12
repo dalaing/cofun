@@ -20,7 +20,7 @@ library
   exposed-modules:     Util.Coproduct
   -- other-modules:       
   -- other-extensions:    
-  build-depends:         base           >= 4.7 && < 4.8
+  build-depends:         base           >= 4.8 && < 4.9
                        , cofun-pairing  >= 0.1 && < 0.2
   hs-source-dirs:      src
   ghc-options:         -Wall

@@ -2,6 +2,7 @@
 module AdderService.CoAdder (
     CoAdder
   , mkCoAdder
+  , mkCoAdderWithLogging
   ) where
 
 import           Components.Add.CoAdd         (coAdd)
@@ -10,6 +11,8 @@ import           Components.Clear.CoClear     (coClear)
 import           Components.Clear.Functors    (CoClearF (..))
 import           Components.Total.CoTotal     (coTotal)
 import           Components.Total.Functors    (CoTotalF (..))
+
+import Components.Console (ConsoleServer(..))
 
 import           Util.Coproduct               ((:*:) (..), (*:*))
 
@@ -27,3 +30,10 @@ mkCoAdder limit count =
   where
     next = coAdd *:* coClear *:* coTotal
     start = flip StoreT count . EnvT limit . Identity $ const ()
+
+mkCoAdderWithLogging :: Int -> Int -> CoAdder (IO ())
+mkCoAdderWithLogging limit count =
+    coiterT (addResultLogging <$> next) (return () <$ start)
+  where
+    next = coAdd *:* coClear *:* coTotal
+    start = flip StoreT count . EnvT limit . Identity . const $ ()

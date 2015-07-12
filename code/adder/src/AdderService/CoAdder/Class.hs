@@ -6,7 +6,6 @@ module AdderService.CoAdder.Class (
 
 import           AdderService.Functors        (CoAdderF (..))
 
-import           Control.Applicative          ((<$>), (<*>))
 import           Control.Comonad.Env.Class    (ComonadEnv, ask)
 import           Control.Comonad.Store.Class  (ComonadStore, pos, seek)
 import           Control.Comonad.Trans.Cofree (CofreeT, coiterT)

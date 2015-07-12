@@ -4,7 +4,7 @@ module Components.Total.Functors (
   , CoTotalF(..)
   ) where
 
-import Components.Console (Console(..))
+import Components.Console (ConsoleClient(..), ConsoleServer(..))
 
 import           Util.Pairing (Pairing (..))
 
@@ -17,12 +17,6 @@ data TotalF k = Total (Int -> k)
 instance Functor TotalF where
   fmap f (Total k) = Total (f . k)
 
-instance Console TotalF where
-    prompt _ = ["total"]
-    parser = do 
-      void $ string "total" 
-      return $ Total (const ())
-
 data CoTotalF k = CoTotal (Int, k)
 
 instance Functor CoTotalF where
@@ -30,3 +24,12 @@ instance Functor CoTotalF where
 
 instance Pairing CoTotalF TotalF where
     pair f (CoTotal t) (Total k) = pair f t k
+
+instance ConsoleClient TotalF where
+  prompt _ = ["total"]
+  parser = do 
+    void $ string "total" 
+    return $ Total (const ())
+
+instance ConsoleServer CoTotalF where
+  addResultLogging (CoTotal (i, k)) = CoTotal (i, putStrLn ("total result: " ++ show i) <$ k)

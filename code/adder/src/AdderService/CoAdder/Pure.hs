@@ -5,7 +5,6 @@ module AdderService.CoAdder.Pure (
 
 import           AdderService.Functors  (CoAdderF (..))
 
-import           Control.Applicative    ((<$>), (<*>))
 import           Control.Comonad.Cofree (Cofree, coiter)
 
 type CoAdder = Cofree CoAdderF

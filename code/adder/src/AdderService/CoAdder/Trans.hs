@@ -5,7 +5,6 @@ module AdderService.CoAdder.Trans (
 
 import           AdderService.Functors        (CoAdderF (..))
 
-import           Control.Applicative          ((<$>), (<*>))
 import           Control.Comonad.Store        (StoreT (..), pos, seek)
 import           Control.Comonad.Trans.Class  (lower)
 import           Control.Comonad.Trans.Cofree (CofreeT, coiterT)

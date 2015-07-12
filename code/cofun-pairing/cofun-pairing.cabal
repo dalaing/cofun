@@ -20,7 +20,7 @@ library
   exposed-modules:     Util.Pairing
   -- other-modules:       
   -- other-extensions:    
-  build-depends:         base          >= 4.7  && < 4.8
+  build-depends:         base          >= 4.8  && < 4.9
                        , transformers  >= 0.4  && < 0.5
                        , free          >= 4.12 && < 4.13
                        , comonad       >= 4.2  && < 4.3

@@ -13,7 +13,7 @@ import           Control.Comonad.Trans.Cofree (CofreeT, unwrap)
 import           Control.Monad.Trans.Free     (FreeF (..), FreeT, runFreeT)
 import           Data.Functor.Identity        (Identity (..))
 
-class (Functor f, Functor g) => Pairing f g where
+class Pairing f g | f -> g, g -> f where
   pair :: (a -> b -> r) -> f a -> g b -> r
 
 instance Pairing Identity Identity where
@@ -25,7 +25,7 @@ instance Pairing ((->) a) ((,) a) where
 instance Pairing ((,) a) ((->) a) where
   pair p f g = p (snd f) (g (fst f))
 
-pairEffect :: (Pairing f g, Comonad w, Monad m)
+pairEffect :: (Pairing f g, Functor f, Functor g, Comonad w, Monad m)
            => (a -> b -> r) -> CofreeT f w a -> FreeT g m b -> m r
 pairEffect p s c = do
   mb <- runFreeT c
@@ -33,7 +33,7 @@ pairEffect p s c = do
     Pure x -> return $ p (extract s) x
     Free gs -> pair (pairEffect p) (unwrap s) gs
 
-pairEffect' :: (Pairing f g, Comonad w, Monad m)
+pairEffect' :: (Pairing f g, Functor f, Functor g, Comonad w, Monad m)
            => (a -> b -> r) -> CofreeT f w (m a) -> FreeT g m b -> m r
 pairEffect' p s c = do
   a  <- extract s
