@@ -712,7 +712,7 @@ testConsole <span class="fu">=</span> pairEffect (\_ r <span class="ot">-&gt;</s
     <link>http://dlaing.org/cofun/posts/pairing_and_io.html</link>
     <description><![CDATA[<h1 id="recap">Recap</h1>
 <p>The <a href="/posts/free_and_cofree.html">first post</a> in this series covered using free monads for DSLs, cofree comonads for interpreters, and how to pair them up. This only covered pure DSLs and interpreters.</p>
-<p>The <a href="/posts/monad_transformers_and_comonad_transformers.html">second post</a> in this series tidied that code up by bringing monad transformers into play for the DSL and comonad transformers into play for the interpreter. In an aside at the end of that post I mentioned how we could update the we we do pairing to take these transformer stacks into account, and demonstrated that by adding some console <code>IO</code> into the DSL.</p>
+<p>The <a href="/posts/monad_transformers_and_comonad_transformers.html">second post</a> in this series tidied that code up by bringing monad transformers into play for the DSL and comonad transformers into play for the interpreter. In an aside at the end of that post, I mentioned how we could update the we we do pairing to take these transformer stacks into account, and demonstrated that by adding some console <code>IO</code> into the DSL.</p>
 <p>The <a href="/posts/coproducts_for_free_and_products_for_cofree.html">third post</a> in this series covered the use of coproducts and products to separate our concerns a little further.</p>
 <p>Now I’ll be covering how to handle <code>IO</code> in the interpreter, and will also be using our adventures with <code>IO</code> to demonstrate how we can push the coproducts and products further.</p>
 <h1 id="effects-in-the-dsl">Effects in the DSL</h1>
@@ -760,7 +760,7 @@ consoleAdder <span class="fu">=</span> forever consoleAdder&#39;</code></pre></d
 <p>We can run it using <code>pairEffect</code> with our existing pure interpreter:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">run ::</span> <span class="dt">IO</span> ()
 run <span class="fu">=</span> pairEffect (\_ r <span class="ot">-&gt;</span> r) (mkCoAdder <span class="dv">10</span> <span class="dv">0</span>) consoleAdder</code></pre></div>
-<p>and we’ll be able to interact with it productively.</p>
+<p>and we’ll be able to interact with it productively, despite the fact that <code>consoleAdder</code> doesn’t terminate.</p>
 <h1 id="effects-in-the-interpreter">Effects in the interpreter</h1>
 <p>That’s good, but it is a bit unsatisfactory since we can’t do any IO in the interpreter itself.</p>
 <p>Let us change <code>pairEffect</code> so that we can do IO in the interpreter:</p>
@@ -788,8 +788,9 @@ pairEffect p s c <span class="fu">=</span> <span class="kw">do</span>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">pairEffect&#39; ::</span> (<span class="dt">Pairing</span> f g, <span class="dt">Comonad</span> w, <span class="dt">Monad</span> l, <span class="dt">Monad</span> m, <span class="dt">Monad</span> n)
            <span class="ot">=&gt;</span> (a <span class="ot">-&gt;</span> b <span class="ot">-&gt;</span> r) <span class="ot">-&gt;</span> <span class="dt">CofreeT</span> f w (l a) <span class="ot">-&gt;</span> <span class="dt">FreeT</span> g m b <span class="ot">-&gt;</span> n r
 pairEffect&#39; p s c <span class="fu">=</span> pairEffect p (fmap morphL s) (hoistFreeT morphM c)</code></pre></div>
+<p>For now, I’ll assume we’re using the same monad stack for our effects for the DSL and the interpeter.</p>
 <h3 id="updating-the-console-example">Updating the console example</h3>
-<p>We’ll split the console example so that the client takes care of the parsing, and the interpreter takes care of printing the results.</p>
+<p>To show off our new <code>pairEffect</code>, We’ll split the console example so that the client takes care of the parsing and the interpreter takes care of printing the results.</p>
 <p>This begins with a new <code>consoleAdder</code>:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">consoleAdder&#39; ::</span> <span class="dt">MonadIO</span> m <span class="ot">=&gt;</span> <span class="dt">AdderT</span> m ()
 consoleAdder&#39; <span class="fu">=</span> <span class="kw">do</span>
@@ -810,7 +811,8 @@ consoleAdder&#39; <span class="fu">=</span> <span class="kw">do</span>
 
 <span class="ot">consoleAdder ::</span> <span class="dt">MonadIO</span> m <span class="ot">=&gt;</span> <span class="dt">AdderT</span> m ()
 consoleAdder <span class="fu">=</span> forever consoleAdder&#39;</code></pre></div>
-<p>We then update our interpreter:</p>
+<p>which no longer prints the results.</p>
+<p>We then update our old interpreter:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">mkCoAdder ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">CoAdder</span> ()
 mkCoAdder limit count <span class="fu">=</span>
     coiterT next start
@@ -834,7 +836,7 @@ addResultLogging (<span class="dt">CoAdderF</span> a c t) <span class="fu">=</sp
         (i, k) <span class="fu">=</span> t
       <span class="kw">in</span>
         (i, putStrLn (<span class="st">&quot;total result: &quot;</span> <span class="fu">++</span> show i) <span class="fu">&lt;$</span> k)</code></pre></div>
-<p>We can use to make a new interpreter:</p>
+<p>We can use <code>addResultLogging</code> to make a new interpreter:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">mkCoAdderWithLogging ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">CoAdder</span> (<span class="dt">IO</span> ())
 mkCoAdderWithLogging limit count <span class="fu">=</span>
     coiterT (addResultLogging <span class="fu">&lt;$&gt;</span> next) (return () <span class="fu">&lt;$</span> start)
@@ -851,8 +853,8 @@ run <span class="fu">=</span> pairEffect (\_ r <span class="ot">-&gt;</span> r) 
 <li>working with <code>Cofree f (a -&gt; m b)</code> and <code>FreeT m a</code></li>
 </ul>
 <h1 id="effects-with-coproducts-and-products">Effects with coproducts and products</h1>
-<p>We need to work a little harder to use this with coproducts and products, but I think it’s pretty interesting.</p>
-<p>For the DSL side of things, we need two things for each components</p>
+<p>We need to work a little harder to use this with coproducts and products, but it was fun to play around with, and I think it’s interesting.</p>
+<p>For the DSL side of things, we need two things for each of the components:</p>
 <ul>
 <li>the text to print in the help message</li>
 <li>the parser for the input</li>
@@ -902,11 +904,12 @@ runConsole&#39; <span class="fu">=</span>
 <span class="ot">runConsole ::</span> (<span class="dt">Functor</span> f, <span class="dt">MonadIO</span> m, <span class="dt">ConsoleClient</span> f, <span class="dt">Monad</span> m) <span class="ot">=&gt;</span> <span class="dt">FreeT</span> f m ()
 runConsole <span class="fu">=</span> forever runConsole&#39;</code></pre></div>
 <p>The main step here is to read a line, parse it, and then either lift the parsed value to our <code>FreeT</code> if the parse succeeds or print the help message if the parse fails.</p>
+<p>This will work with any <code>Sum</code> of <code>ConsoleClient</code>s, which is nice.</p>
 <p>Unsurprisingly, we can also abstract the changes to the interpreter on a per component basis.</p>
 <p>To begin with, we’ll generalize <code>addResultLogging</code> to a class:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">class</span> <span class="dt">ConsoleInterpreter</span> f <span class="kw">where</span>
 <span class="ot">  addResultLogging ::</span> <span class="dt">Functor</span> g <span class="ot">=&gt;</span> f (g a) <span class="ot">-&gt;</span> f (g (<span class="dt">IO</span> ()))</code></pre></div>
-<p>We can create instances for each of our components:</p>
+<p>We create instances for each of our components:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">ConsoleInterpreter</span> <span class="dt">CoAddF</span> <span class="kw">where</span>
   addResultLogging (<span class="dt">CoAdd</span> f) <span class="fu">=</span> <span class="dt">CoAdd</span> (fmap (\(b, k) <span class="ot">-&gt;</span> (b, putStrLn (<span class="st">&quot;add result: &quot;</span> <span class="fu">++</span> show b) <span class="fu">&lt;$</span> k)) f)</code></pre></div>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">ConsoleInterpreter</span> <span class="dt">CoTotalF</span> <span class="kw">where</span>
@@ -924,7 +927,11 @@ mkCoAdderWithLogging limit count <span class="fu">=</span>
     next <span class="fu">=</span> coAdd <span class="fu">*:*</span> coClear <span class="fu">*:*</span> coTotal
     start <span class="fu">=</span> flip <span class="dt">StoreT</span> count <span class="fu">.</span> <span class="dt">EnvT</span> limit <span class="fu">.</span> <span class="dt">Identity</span> <span class="fu">.</span> const <span class="fu">$</span> ()</code></pre></div>
 <p>At some point it’d be nice to put together something like <code>reiterT</code>, with the goal of being able to rework a <code>CoAdder ()</code> into a <code>CoAdder (IO ())</code> more generically and without having to write a new version of <code>mkCoAdder</code>. I’ll update this post if or when I get around to it (or if someone else has a good suggestion for it).</p>
-<p>We can switch from Dan Piponi’s version of <code>Pairing</code> to Ed Kmett’s version:</p>
+<p>We can run this:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">run ::</span> <span class="dt">IO</span> ()
+run <span class="fu">=</span> pairEffect&#39; (\_ r <span class="ot">-&gt;</span> r) (mkCoAdderWithLogging <span class="dv">10</span> <span class="dv">0</span>) (<span class="ot">runConsole ::</span> <span class="dt">FreeT</span> <span class="dt">AdderF</span> <span class="dt">IO</span> ())</code></pre></div>
+<p>but we need an explicit type signature for <code>runConsole</code>.</p>
+<p>We can switch from Dan Piponi’s version of <code>Pairing</code> to Ed Kmett’s version at this point:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">class</span> <span class="dt">Pairing</span> f g <span class="fu">|</span> f <span class="ot">-&gt;</span> g, g <span class="ot">-&gt;</span> f <span class="kw">where</span>
 <span class="ot">  pair ::</span> (a <span class="ot">-&gt;</span> b <span class="ot">-&gt;</span> r) <span class="ot">-&gt;</span> f a <span class="ot">-&gt;</span> g b <span class="ot">-&gt;</span> r</code></pre></div>
 <p>Adding the <code>FunctionalDependencies</code> help drive the inference, although it looks like we may need <code>UndecidableInstances</code> to get the pairing between <code>:+:</code> and <code>:*:</code> to work.</p>
@@ -932,7 +939,6 @@ mkCoAdderWithLogging limit count <span class="fu">=</span>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">run ::</span> <span class="dt">IO</span> ()
 run <span class="fu">=</span> pairEffect&#39; (\_ r <span class="ot">-&gt;</span> r) (mkCoAdderWithLogging <span class="dv">10</span> <span class="dv">0</span>) runConsole</code></pre></div>
 <p>in which case the type of <code>runConsole</code> will be inferred to match the type of <code>mkCoAdderWithLogging</code>, which is pretty neat.</p>
-<p>If we stick to the old version of <code>Pairing</code>, we need to add an explicit type signature for <code>runConsole</code>. We don’t get the inference, but we will get a type error if there isn’t a pairing between the underlying the functors of the free monad and cofree comonad we are using.</p>
 <h1 id="conclusion">Conclusion</h1>
 <p>We’re starting to build up a set of handy ideas.</p>
 <p>It’s worth mentioning that this has mostly been by me wondering if I can do something, and then following the types and adapting to them to problems as I come across them. The point is that none of this is set in stone, and there are a lot of ways these things can be sliced and diced in fun ways. So if you’re branching out and hit a roadblock with some of the pieces that I’ve mentioned in these posts, try to rework it (or replace it) - if there’s any deep theory in play here it is almost entirely unintentional.</p>
