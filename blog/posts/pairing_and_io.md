@@ -9,7 +9,7 @@ The [first post](/posts/free_and_cofree.html) in this series covered using free 
 This only covered pure DSLs and interpreters.
 
 The [second post](/posts/monad_transformers_and_comonad_transformers.html) in this series tidied that code up by bringing monad transformers into play for the DSL and comonad transformers into play for the interpreter.
-In an aside at the end of that post I mentioned how we could update the we we do pairing to take these transformer stacks into account, and demonstrated that by adding some console `IO` into the DSL.
+In an aside at the end of that post, I mentioned how we could update the we we do pairing to take these transformer stacks into account, and demonstrated that by adding some console `IO` into the DSL.
 
 The [third post](/posts/coproducts_for_free_and_products_for_cofree.html) in this series covered the use of coproducts and products to separate our concerns a little further.
 
@@ -79,7 +79,7 @@ We can run it using `pairEffect` with our existing pure interpreter:
 run :: IO ()
 run = pairEffect (\_ r -> r) (mkCoAdder 10 0) consoleAdder
 ```
-and we'll be able to interact with it productively.
+and we'll be able to interact with it productively, despite the fact that `consoleAdder` doesn't terminate.
 
 # Effects in the interpreter
 
@@ -129,9 +129,11 @@ pairEffect' :: (Pairing f g, Comonad w, Monad l, Monad m, Monad n)
 pairEffect' p s c = pairEffect p (fmap morphL s) (hoistFreeT morphM c)
 ```
 
+For now, I'll assume we're using the same monad stack for our effects for the DSL and the interpeter.
+
 ### Updating the console example ###
 
-We'll split the console example so that the client takes care of the parsing, and the interpreter takes care of printing the results.
+To show off our new `pairEffect`, We'll split the console example so that the client takes care of the parsing and the interpreter takes care of printing the results.
 
 This begins with a new `consoleAdder`:
 ```haskell
@@ -155,8 +157,9 @@ consoleAdder' = do
 consoleAdder :: MonadIO m => AdderT m ()
 consoleAdder = forever consoleAdder'
 ```
+which no longer prints the results.
 
-We then update our interpreter:
+We then update our old interpreter:
 ```haskell
 mkCoAdder :: Int -> Int -> CoAdder ()
 mkCoAdder limit count =
@@ -187,7 +190,7 @@ addResultLogging (CoAdderF a c t) = CoAdderF a' c' t'
         (i, putStrLn ("total result: " ++ show i) <$ k)
 ```
 
-We can use to make a new interpreter:
+We can use `addResultLogging` to make a new interpreter:
 ```haskell
 mkCoAdderWithLogging :: Int -> Int -> CoAdder (IO ())
 mkCoAdderWithLogging limit count =
@@ -212,9 +215,9 @@ Two variants I've seen around the internet that seem like they'd be pretty handy
 
 # Effects with coproducts and products
 
-We need to work a little harder to use this with coproducts and products, but I think it's pretty interesting.
+We need to work a little harder to use this with coproducts and products, but it was fun to play around with, and I think it's interesting.
 
-For the DSL side of things, we need two things for each components
+For the DSL side of things, we need two things for each of the components:
 
 - the text to print in the help message
 - the parser for the input
@@ -287,6 +290,8 @@ runConsole = forever runConsole'
 
 The main step here is to read a line, parse it, and then either lift the parsed value to our `FreeT` if the parse succeeds or print the help message if the parse fails.
 
+This will work with any `Sum` of `ConsoleClient`s, which is nice.
+
 Unsurprisingly, we can also abstract the changes to the interpreter on a per component basis.
 
 To begin with, we'll generalize `addResultLogging` to a class:
@@ -295,7 +300,7 @@ class ConsoleInterpreter f where
   addResultLogging :: Functor g => f (g a) -> f (g (IO ()))
 ```
 
-We can create instances for each of our components:
+We create instances for each of our components:
 ```haskell
 instance ConsoleInterpreter CoAddF where
   addResultLogging (CoAdd f) = CoAdd (fmap (\(b, k) -> (b, putStrLn ("add result: " ++ show b) <$ k)) f)
@@ -329,11 +334,19 @@ mkCoAdderWithLogging limit count =
 At some point it'd be nice to put together something like `reiterT`, with the goal of being able to rework a `CoAdder ()` into a `CoAdder (IO ())` more generically and without having to write a new version of `mkCoAdder`.
 I'll update this post if or when I get around to it (or if someone else has a good suggestion for it).
 
-We can switch from Dan Piponi's version of `Pairing` to Ed Kmett's version:
+We can run this:
+```haskell
+run :: IO ()
+run = pairEffect' (\_ r -> r) (mkCoAdderWithLogging 10 0) (runConsole :: FreeT AdderF IO ())
+```
+but we need an explicit type signature for `runConsole`.
+
+We can switch from Dan Piponi's version of `Pairing` to Ed Kmett's version at this point:
 ```haskell
 class Pairing f g | f -> g, g -> f where
   pair :: (a -> b -> r) -> f a -> g b -> r
 ```
+
 Adding the `FunctionalDependencies` help drive the inference, although it looks like we may need `UndecidableInstances` to get the pairing between `:+:` and `:*:` to work.
 
 This lets us write `run` like this:
@@ -342,9 +355,6 @@ run :: IO ()
 run = pairEffect' (\_ r -> r) (mkCoAdderWithLogging 10 0) runConsole
 ```
 in which case the type of `runConsole` will be inferred to match the type of `mkCoAdderWithLogging`, which is pretty neat.
-
-If we stick to the old version of `Pairing`, we need to add an explicit type signature for `runConsole`.
-We don't get the inference, but we will get a type error if there isn't a pairing between the underlying the functors of the free monad and cofree comonad we are using.
 
 # Conclusion
 
@@ -356,4 +366,4 @@ So if you're branching out and hit a roadblock with some of the pieces that I've
 
 Next time, I'll be pairing our DSL and interpreter over a network.
 
-[Questions? Comments?](TODO)
+[Questions? Comments?](https://www.reddit.com/r/haskell/comments/3d0fgf/free_cofree_and_io/)
