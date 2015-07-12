@@ -12,7 +12,7 @@ import           Components.Clear.Functors    (CoClearF (..))
 import           Components.Total.CoTotal     (coTotal)
 import           Components.Total.Functors    (CoTotalF (..))
 
-import Components.Console (ConsoleServer(..))
+import Components.Console (ConsoleInterpreter(..))
 
 import           Util.Coproduct               ((:*:) (..), (*:*))
 

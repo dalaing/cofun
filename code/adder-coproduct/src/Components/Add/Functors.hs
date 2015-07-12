@@ -4,12 +4,13 @@ module Components.Add.Functors (
     , CoAddF(..)
     ) where
 
-import Components.Console (ConsoleClient(..), ConsoleServer(..))
+import           Components.Console      (ConsoleClient (..),
+                                          ConsoleInterpreter (..))
 
-import           Util.Pairing (Pairing (..))
+import           Util.Pairing            (Pairing (..))
 
-import Text.Parser.Char
-import Text.Parser.Combinators
+import           Text.Parser.Char
+import           Text.Parser.Combinators
 
 data AddF k = Add Int (Bool -> k)
 
@@ -26,12 +27,12 @@ instance Pairing CoAddF AddF where
 
 instance ConsoleClient AddF where
     prompt _ = ["add (int)"]
-    parser = 
-      string "add" >> 
-      space >> 
-      many digit >>= \xs -> 
+    parser =
+      string "add" >>
+      space >>
+      many digit >>= \xs ->
         return $ Add (read xs) (const ())
 
-instance ConsoleServer CoAddF where
+instance ConsoleInterpreter CoAddF where
   addResultLogging (CoAdd f) = CoAdd (fmap (\(b, k) -> (b, putStrLn ("add result: " ++ show b) <$ k)) f)
 

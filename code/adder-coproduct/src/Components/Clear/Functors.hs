@@ -4,13 +4,14 @@ module Components.Clear.Functors (
   , CoClearF(..)
   ) where
 
-import Components.Console (ConsoleClient(..), ConsoleServer(..))
+import           Components.Console (ConsoleClient (..),
+                                     ConsoleInterpreter (..))
 
-import           Util.Pairing (Pairing (..))
+import           Util.Pairing       (Pairing (..))
 
-import Text.Parser.Char
+import           Text.Parser.Char
 
-import Control.Monad (void)
+import           Control.Monad      (void)
 
 data ClearF k = Clear k
 
@@ -31,6 +32,6 @@ instance ConsoleClient ClearF where
     void $ string "clear"
     return $ Clear ()
 
-instance ConsoleServer CoClearF where
+instance ConsoleInterpreter CoClearF where
   addResultLogging (CoClear k) = CoClear (return () <$ k)
 

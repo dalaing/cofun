@@ -19,6 +19,8 @@ cabal-version:       >=1.10
 library
   exposed-modules:       AdderService.Adder
                        , AdderService.Adder.Console
+                       , AdderService.Adder.Console.Client
+                       , AdderService.Adder.Console.Interpreter
                        , AdderService.Adder.Interpreter.Pure
                        , AdderService.Adder.Interpreter.Iter
                        , AdderService.Adder.Interpreter.Transformers

@@ -1,5 +1,5 @@
 ---
-title: Coproducts for free, and products for cofree
+title: Coproducts for free and products for cofree
 published: 2015-06-29 09:00:00+10:00
 ---
 
@@ -367,6 +367,6 @@ I'm also curious about whether we can [go even further than Sum and Product](htt
 
 There's still a few posts to come before I've covered everything I mentioned in the talk.
 
-So far, none of the interpreters we've defined have done any IO.  The next post will look at our options for dealing with effects in our DSLs and interpreters.
+So far, none of the interpreters we've defined have done any `IO`.  The [next post](/posts/pairing_and_io.html) will look at our options for dealing with effects in our DSLs and interpreters.
 
 [Questions? Comments?](https://www.reddit.com/r/haskell/comments/3beiti/coproducts_for_free_and_products_for_cofree/)
