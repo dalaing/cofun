@@ -1,11 +1,17 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
 module Components.Add.Functors (
       AddF(..)
     , CoAddF(..)
     ) where
 
+import Components.Add.Packets (AddReq(..), AddRes(..))
+
 import           Util.Console      (ConsoleClient (..),
                                           ConsoleInterpreter (..))
+import           Util.Network      (ToNetworkClient (..), ToNetworkInterpreter (..))
+import           Util.Network.Functors   (NetworkClientF (..), NetworkInterpreterF (..))
 import           Util.Pairing            (Pairing (..))
 
 import           Text.Parser.Char
@@ -34,4 +40,16 @@ instance ConsoleClient AddF where
 
 instance ConsoleInterpreter CoAddF where
   addResultLogging (CoAdd f) = CoAdd (fmap (\(b, k) -> (b, putStrLn ("add result: " ++ show b) <$ k)) f)
+
+instance Monad m => ToNetworkClient AddF m where
+  type ClientReq AddF = AddReq
+  type ClientRes AddF = AddRes
+  toNetworkClient (Add x f) = NetworkClientF (AddReq x, return (\(AddRes b) -> f b))
+
+instance Monad m => ToNetworkInterpreter CoAddF m where
+  type InterpreterReq CoAddF = AddReq
+  type InterpreterRes CoAddF = AddRes
+  toNetworkInterpreter (CoAdd f) = NetworkInterpreterF $
+    \(AddReq x) -> case f x of
+      (b, k) -> return (AddRes b, k)
 

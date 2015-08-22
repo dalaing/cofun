@@ -1,11 +1,17 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
 module Components.Total.Functors (
     TotalF(..)
   , CoTotalF(..)
   ) where
 
+import Components.Total.Packets (TotalReq(..), TotalRes(..))
+
 import           Util.Console (ConsoleClient (..),
                                      ConsoleInterpreter (..))
+import           Util.Network      (ToNetworkClient (..), ToNetworkInterpreter (..))
+import           Util.Network.Functors   (NetworkClientF (..), NetworkInterpreterF (..))
 import           Util.Pairing       (Pairing (..))
 
 import           Control.Monad      (void)
@@ -33,3 +39,15 @@ instance ConsoleClient TotalF where
 
 instance ConsoleInterpreter CoTotalF where
   addResultLogging (CoTotal (i, k)) = CoTotal (i, putStrLn ("total result: " ++ show i) <$ k)
+
+instance Monad m => ToNetworkClient TotalF m where
+  type ClientReq TotalF = TotalReq
+  type ClientRes TotalF = TotalRes
+  toNetworkClient (Total f) = NetworkClientF (TotalReq, return (\(TotalRes i) -> f i))
+
+instance Monad m => ToNetworkInterpreter CoTotalF m where
+  type InterpreterReq CoTotalF = TotalReq
+  type InterpreterRes CoTotalF = TotalRes
+  toNetworkInterpreter (CoTotal (i, k)) = NetworkInterpreterF $
+    \(TotalReq) -> return (TotalRes i, k)
+

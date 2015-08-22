@@ -1,11 +1,17 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
 module Components.Clear.Functors (
     ClearF(..)
   , CoClearF(..)
   ) where
 
+import Components.Clear.Packets (ClearReq(..), ClearRes(..))
+
 import           Util.Console (ConsoleClient (..),
                                      ConsoleInterpreter (..))
+import           Util.Network      (ToNetworkClient (..), ToNetworkInterpreter (..))
+import           Util.Network.Functors   (NetworkClientF (..), NetworkInterpreterF (..))
 import           Util.Pairing       (Pairing (..))
 
 import           Text.Parser.Char
@@ -33,4 +39,15 @@ instance ConsoleClient ClearF where
 
 instance ConsoleInterpreter CoClearF where
   addResultLogging (CoClear k) = CoClear (return () <$ k)
+
+instance Monad m => ToNetworkClient ClearF m where
+  type ClientReq ClearF = ClearReq
+  type ClientRes ClearF = ClearRes
+  toNetworkClient (Clear k) = NetworkClientF (ClearReq, return (\(ClearRes) -> k))
+
+instance Monad m => ToNetworkInterpreter CoClearF m where
+  type InterpreterReq CoClearF = ClearReq
+  type InterpreterRes CoClearF = ClearRes
+  toNetworkInterpreter (CoClear k) = NetworkInterpreterF $
+    \(ClearReq) -> return (ClearRes, k)
 
