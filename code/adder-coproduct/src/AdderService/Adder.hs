@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeOperators        #-}
+{-# LANGUAGE DataKinds        #-}
 module AdderService.Adder (
     AdderT
   , AdderF
@@ -14,10 +15,10 @@ import           Components.Clear.Functors (ClearF)
 import           Components.Total.Functors (TotalF)
 import           Components.Total.Total    (total)
 
-import           Util.Coproduct            ((:+:) (..))
+import Util.Coproduct (SumF)
 
 import           Control.Monad.Trans.Free  (FreeT)
 
-type AdderF = AddF :+: ClearF :+: TotalF
+type AdderF = SumF '[AddF, ClearF, TotalF]
 type AdderT = FreeT AdderF
 

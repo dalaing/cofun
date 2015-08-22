@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DataKinds #-}
 module AdderService.CoAdder (
     CoAdder
   , mkCoAdder
@@ -14,26 +15,27 @@ import           Components.Total.Functors    (CoTotalF (..))
 
 import Components.Console (ConsoleInterpreter(..))
 
-import           Util.Coproduct               ((:*:) (..), (*:*))
+import           Util.Coproduct               ((*:*))
 
 import           Control.Comonad.Trans.Cofree (CofreeT, coiterT)
 import           Control.Comonad.Trans.Env    (EnvT (..))
 import           Control.Comonad.Trans.Store  (StoreT (..))
 import           Data.Functor.Identity        (Identity (..))
 
-type CoAdderT = CofreeT (CoAddF :*: CoClearF :*: CoTotalF)
+-- type CoAdderT = CofreeT (CoAddF :*: CoClearF :*: CoTotalF)
+type CoAdderT = CofreeT (ProductF '[CoAddF, CoClearF, CoTotalF])
 type CoAdder = CoAdderT (StoreT Int (EnvT Int Identity))
 
 mkCoAdder :: Int -> Int -> CoAdder ()
 mkCoAdder limit count =
     coiterT next start
   where
-    next = coAdd *:* coClear *:* coTotal
+    next = coAdd *:* (coClear *:* coTotal)
     start = flip StoreT count . EnvT limit . Identity $ const ()
 
 mkCoAdderWithLogging :: Int -> Int -> CoAdder (IO ())
 mkCoAdderWithLogging limit count =
     coiterT (addResultLogging <$> next) (return () <$ start)
   where
-    next = coAdd *:* coClear *:* coTotal
+    next = coAdd *:* (coClear *:* coTotal)
     start = flip StoreT count . EnvT limit . Identity . const $ ()

@@ -6,10 +6,10 @@ module Components.Total.Total (
 
 import           Components.Total.Functors (TotalF (..))
 
-import           Util.Coproduct            ((:<:) (..))
+import           Util.Coproduct            (SumF, Contains(..))
 
 import           Control.Monad.Free        (MonadFree)
 import           Control.Monad.Trans.Free  (liftF)
 
-total :: (MonadFree f m, TotalF :<: f) => m Int
+total :: (MonadFree (SumF f) m, Contains TotalF f) => m Int
 total = liftF . inj $ Total id

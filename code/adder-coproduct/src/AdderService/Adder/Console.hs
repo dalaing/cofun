@@ -11,13 +11,13 @@ import           Components.Clear.Functors (ClearF)
 import           Components.Total.Functors (TotalF)
 import           Components.Total.Total    (total)
 
-import           Util.Coproduct            ((:<:) (..))
+import           Util.Coproduct            (SumF, Contains)
 
 import           Control.Monad             (forever)
 import           Control.Monad.IO.Class    (MonadIO, liftIO)
 import           Control.Monad.Trans.Free  (FreeT)
 
-consoleAdder' :: (MonadIO m, AddF :<: f, ClearF :<: f, TotalF :<: f)=> FreeT f m ()
+consoleAdder' :: (MonadIO m, Contains AddF f, Contains ClearF f, Contains TotalF f)=> FreeT (SumF f) m ()
 consoleAdder' = do
     l <- liftIO getLine
     case words l of
@@ -36,7 +36,7 @@ consoleAdder' = do
           ,"  total"
           ]
 
-consoleAdder :: (MonadIO m, AddF :<: f, ClearF :<: f, TotalF :<: f)=> FreeT f m ()
+consoleAdder :: (MonadIO m, Contains AddF f, Contains ClearF f, Contains TotalF f)=> FreeT (SumF f) m ()
 consoleAdder = forever consoleAdder'
 
 -- test :: IO ()
