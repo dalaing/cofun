@@ -1,9 +1,9 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 module Util.Pairing (
       Pairing(..)
     , pairEffect
-    , pairEffect'
     , PairingM(..)
     , pairEffectM
     ) where
@@ -26,29 +26,22 @@ instance Pairing ((,) a) ((->) a) where
   pair p f g = p (snd f) (g (fst f))
 
 pairEffect :: (Pairing f g, Functor f, Functor g, Comonad w, Monad m)
-           => (a -> b -> r) -> CofreeT f w a -> FreeT g m b -> m r
-pairEffect p s c = do
-  mb <- runFreeT c
-  case mb of
-    Pure x -> return $ p (extract s) x
-    Free gs -> pair (pairEffect p) (unwrap s) gs
-
-pairEffect' :: (Pairing f g, Functor f, Functor g, Comonad w, Monad m)
            => (a -> b -> r) -> CofreeT f w (m a) -> FreeT g m b -> m r
-pairEffect' p s c = do
+pairEffect p s c = do
   a  <- extract s
   mb <- runFreeT c
   case mb of
     Pure x -> return $ p a x
-    Free gs -> pair (pairEffect' p) (unwrap s) gs
+    Free gs -> pair (pairEffect p) (unwrap s) gs
 
-class (Functor m, Functor f, Functor g) => PairingM f g m | f g -> m where
+class PairingM f g m | f -> g, g -> f where
   pairM :: (a -> b -> m r) -> f a -> g b -> m r
 
-pairEffectM :: (PairingM f g m, Comonad w, Monad m)
-            => (a -> b -> m r) -> CofreeT f w a -> FreeT g m b -> m r
+pairEffectM :: (Functor (f m), PairingM (f m) (g m) m,  Comonad w, Monad m)
+            => (a -> b -> m r) -> CofreeT (f m) w (m a) -> FreeT (g m) m b -> m r
 pairEffectM p s c = do
+  a <- extract s
   mb <- runFreeT c
   case mb of
-    Pure x -> p (extract s) x
+    Pure x -> p a x
     Free gs -> pairM (pairEffectM p) (unwrap s) gs
