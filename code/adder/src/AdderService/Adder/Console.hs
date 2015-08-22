@@ -1,8 +1,12 @@
 module AdderService.Adder.Console (
     consoleAdder
+  , run
   ) where
 
 import           AdderService.Adder     (AdderT, add, clear, total)
+import           AdderService.CoAdder.Trans (mkCoAdder)
+
+import Util.Pairing (pairEffect)
 
 import           Control.Monad          (forever)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
@@ -29,5 +33,5 @@ consoleAdder' = do
 consoleAdder :: MonadIO m => AdderT m ()
 consoleAdder = forever consoleAdder'
 
--- test :: IO ()
--- test = pairEffect (\_ r -> r) (mkCoAdder 10 0) consoleAdder
+run :: IO ()
+run = pairEffect (\_ r -> r) (return () <$ mkCoAdder 10 0) consoleAdder
