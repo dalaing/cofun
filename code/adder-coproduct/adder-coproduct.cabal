@@ -21,15 +21,6 @@ library
                        , AdderService.Console
                        , AdderService.Adder.Limit
                        , AdderService.CoAdder
-                       , Components.Add.Add
-                       , Components.Add.CoAdd
-                       , Components.Add.Functors
-                       , Components.Clear.Clear
-                       , Components.Clear.CoClear
-                       , Components.Clear.Functors
-                       , Components.Total.Total
-                       , Components.Total.CoTotal
-                       , Components.Total.Functors
   -- other-modules:       
   -- other-extensions:    
   build-depends:         base               >= 4.8      && < 4.9
@@ -41,6 +32,7 @@ library
                        , cofun-pairing      >= 0.1      && < 0.2
                        , cofun-coproduct    >= 0.1      && < 0.2
                        , cofun-console      >= 0.1      && < 0.2
+                       , adder-components   >= 0.1      && < 0.2
   hs-source-dirs:      src
   ghc-options:         -Wall
   default-language:    Haskell2010
