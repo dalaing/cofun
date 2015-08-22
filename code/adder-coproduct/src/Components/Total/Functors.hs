@@ -4,9 +4,8 @@ module Components.Total.Functors (
   , CoTotalF(..)
   ) where
 
-import           Components.Console (ConsoleClient (..),
+import           Util.Console (ConsoleClient (..),
                                      ConsoleInterpreter (..))
-
 import           Util.Pairing       (Pairing (..))
 
 import           Control.Monad      (void)

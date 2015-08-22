@@ -18,8 +18,8 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:       AdderService.Adder
+                       , AdderService.Console
                        , AdderService.Adder.Limit
-                       , AdderService.Adder.Console
                        , AdderService.CoAdder
                        , Components.Add.Add
                        , Components.Add.CoAdd
@@ -30,8 +30,6 @@ library
                        , Components.Total.Total
                        , Components.Total.CoTotal
                        , Components.Total.Functors
-                       , Components.Console
-                       , Components.Console.Run
   -- other-modules:       
   -- other-extensions:    
   build-depends:         base               >= 4.8      && < 4.9
@@ -42,6 +40,7 @@ library
                        , parsec             >= 3.1      && < 3.2
                        , cofun-pairing      >= 0.1      && < 0.2
                        , cofun-coproduct    >= 0.1      && < 0.2
+                       , cofun-console      >= 0.1      && < 0.2
   hs-source-dirs:      src
   ghc-options:         -Wall
   default-language:    Haskell2010

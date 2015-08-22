@@ -13,16 +13,14 @@ import           Components.Clear.Functors    (CoClearF (..))
 import           Components.Total.CoTotal     (coTotal)
 import           Components.Total.Functors    (CoTotalF (..))
 
-import Components.Console (ConsoleInterpreter(..))
-
-import           Util.Coproduct               ((*:*))
+import           Util.Console (ConsoleInterpreter(..))
+import           Util.Coproduct               (ProductF, (*:*))
 
 import           Control.Comonad.Trans.Cofree (CofreeT, coiterT)
 import           Control.Comonad.Trans.Env    (EnvT (..))
 import           Control.Comonad.Trans.Store  (StoreT (..))
 import           Data.Functor.Identity        (Identity (..))
 
--- type CoAdderT = CofreeT (CoAddF :*: CoClearF :*: CoTotalF)
 type CoAdderT = CofreeT (ProductF '[CoAddF, CoClearF, CoTotalF])
 type CoAdder = CoAdderT (StoreT Int (EnvT Int Identity))
 

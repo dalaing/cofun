@@ -4,9 +4,8 @@ module Components.Add.Functors (
     , CoAddF(..)
     ) where
 
-import           Components.Console      (ConsoleClient (..),
+import           Util.Console      (ConsoleClient (..),
                                           ConsoleInterpreter (..))
-
 import           Util.Pairing            (Pairing (..))
 
 import           Text.Parser.Char
