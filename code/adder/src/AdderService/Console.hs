@@ -1,4 +1,4 @@
-module AdderService.Adder.Console (
+module AdderService.Console (
     run
   ) where
 
