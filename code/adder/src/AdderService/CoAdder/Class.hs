@@ -2,9 +2,12 @@
 module AdderService.CoAdder.Class (
     CoAdder
   , mkCoAdder
+  , mkCoAdderWithLogging
   ) where
 
 import           AdderService.Functors        (CoAdderF (..))
+
+import           Util.Console (ConsoleInterpreter(..))
 
 import           Control.Comonad.Env.Class    (ComonadEnv, ask)
 import           Control.Comonad.Store.Class  (ComonadStore, pos, seek)
@@ -34,6 +37,13 @@ coTotal w = (pos w, w)
 mkCoAdder :: Int -> Int -> CoAdder ()
 mkCoAdder limit count =
     coiterT next start
+  where
+    next = CoAdderF <$> coAdd <*> coClear <*> coTotal
+    start = flip StoreT count . EnvT limit . Identity $ const ()
+
+mkCoAdderWithLogging :: Int -> Int -> CoAdder (IO ())
+mkCoAdderWithLogging limit count =
+    coiterT (addResultLogging <$> next) (return () <$ start)
   where
     next = CoAdderF <$> coAdd <*> coClear <*> coTotal
     start = flip StoreT count . EnvT limit . Identity $ const ()

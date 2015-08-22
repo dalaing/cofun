@@ -1,37 +1,11 @@
 module AdderService.Adder.Console (
-    consoleAdder
-  , run
+    run
   ) where
 
-import           AdderService.Adder     (AdderT, add, clear, total)
-import           AdderService.CoAdder.Trans (mkCoAdder)
+import           AdderService.CoAdder.Class (mkCoAdderWithLogging)
 
-import Util.Pairing (pairEffect)
-
-import           Control.Monad          (forever)
-import           Control.Monad.IO.Class (MonadIO, liftIO)
-
-consoleAdder' :: MonadIO m => AdderT m ()
-consoleAdder' = do
-    l <- liftIO getLine
-    case words l of
-      ["add", x] -> add (read x) >>= \b ->
-        output $ "add result: " ++ show b
-      ["clear"] -> clear
-      ["total"] -> total >>= \t ->
-        output $ "total result: " ++ show t
-      _ -> output prompt
-  where
-   output = liftIO . putStrLn
-   prompt = unlines [
-            "Commands:"
-          , "  add [int]"
-          , "  clear"
-          ,"  total"
-          ]
-
-consoleAdder :: MonadIO m => AdderT m ()
-consoleAdder = forever consoleAdder'
+import           Util.Pairing (pairEffect)
+import           Util.Console (runConsole)
 
 run :: IO ()
-run = pairEffect (\_ r -> r) (return () <$ mkCoAdder 10 0) consoleAdder
+run = pairEffect (\_ r -> r) (mkCoAdderWithLogging 10 0) runConsole

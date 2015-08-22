@@ -19,8 +19,6 @@ cabal-version:       >=1.10
 library
   exposed-modules:       AdderService.Adder
                        , AdderService.Adder.Console
-                       , AdderService.Adder.Console.Client
-                       , AdderService.Adder.Console.Interpreter
                        , AdderService.Adder.Interpreter.Pure
                        , AdderService.Adder.Interpreter.Iter
                        , AdderService.Adder.Interpreter.Transformers
@@ -39,7 +37,10 @@ library
                        , mtl            >= 2.2  && < 2.3
                        , free           >= 4.12 && < 4.13
                        , comonad        >= 4.2  && < 4.3
+                       , parsers        >= 0.12 && < 0.13
+                       , parsec         >= 3.1  && < 3.2
                        , cofun-pairing  >= 0.1  && < 0.2
+                       , cofun-console  >= 0.1  && < 0.2
   hs-source-dirs:      src
   ghc-options:         -Wall
   default-language:    Haskell2010
