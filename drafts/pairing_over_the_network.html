@@ -225,8 +225,8 @@ mkClientConnector <span class="fu">=</span> coiterT f (<span class="dt">Identity
       res <span class="ot">&lt;-</span> fmap (decode <span class="fu">.</span> L.fromStrict) <span class="fu">&lt;$&gt;</span> recv s <span class="dv">1024</span>
       <span class="co">-- check for disconnection</span>
       <span class="kw">case</span> res <span class="kw">of</span>
-          <span class="dt">Nothing</span> <span class="ot">-&gt;</span> throwError <span class="dt">Disconnected</span>
-          <span class="dt">Just</span> x <span class="ot">-&gt;</span> return (x, w)</code></pre></div>
+        <span class="dt">Nothing</span> <span class="ot">-&gt;</span> throwError <span class="dt">Disconnected</span>
+        <span class="dt">Just</span> x <span class="ot">-&gt;</span> return (x, w)</code></pre></div>
 <p>This is where we end up needing <code>Binary</code> instances for <code>AdderReq</code> and <code>AdderRes</code>:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Binary</span> <span class="dt">AdderReq</span> <span class="kw">where</span>
   put (<span class="dt">AddReq</span> i) <span class="fu">=</span> putWord8 <span class="dv">0</span> <span class="fu">&gt;&gt;</span> put i
@@ -304,11 +304,11 @@ mkInterpreterConnector <span class="fu">=</span> <span class="kw">do</span>
     <span class="co">-- stop on disconnection</span>
     <span class="dt">Nothing</span> <span class="ot">-&gt;</span> <span class="dt">FreeT</span> <span class="fu">$</span> throwError <span class="dt">Disconnected</span>
     <span class="dt">Just</span> x <span class="ot">-&gt;</span> <span class="dt">FreeT</span> <span class="fu">.</span> return <span class="fu">.</span> <span class="dt">Free</span> <span class="fu">.</span> <span class="dt">NetworkClientF</span> <span class="fu">$</span> (x, \t <span class="ot">-&gt;</span> <span class="kw">do</span>
-          <span class="co">-- encode and send the response</span>
-          _ <span class="ot">&lt;-</span> liftIO <span class="fu">.</span> send s <span class="fu">.</span> L.toStrict <span class="fu">.</span> encode <span class="fu">$</span> t
-          <span class="co">-- keep on going</span>
-          return mkInterpreterConnector
-        )</code></pre></div>
+      <span class="co">-- encode and send the response</span>
+      _ <span class="ot">&lt;-</span> liftIO <span class="fu">.</span> send s <span class="fu">.</span> L.toStrict <span class="fu">.</span> encode <span class="fu">$</span> t
+      <span class="co">-- keep on going</span>
+      return mkInterpreterConnector
+    )</code></pre></div>
 <p>With the client we didn’t need to use recursion, since the <code>coiterT</code> in <code>mkClientConnector</code> gave us that. Here we need to make a recursive call, but we don’t make the call in the event of a disconnection.</p>
 <p>We have a helper function to serve the interpreter on a particular address and port:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">runInterpreter ::</span> <span class="dt">HostName</span> <span class="ot">-&gt;</span> <span class="dt">ServiceName</span> <span class="ot">-&gt;</span> <span class="dt">ReaderT</span> <span class="dt">Socket</span> (<span class="dt">ExceptT</span> <span class="dt">NetError</span> <span class="dt">IO</span>) () <span class="ot">-&gt;</span> <span class="dt">IO</span> ()
