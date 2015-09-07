@@ -14,6 +14,9 @@ import           Util.Network      (ToNetworkClient (..), ToNetworkInterpreter (
 import           Util.Network.Functors   (NetworkClientF (..), NetworkInterpreterF (..))
 import           Util.Pairing            (Pairing (..))
 
+
+import           Control.Monad.IO.Class (liftIO)
+
 import           Text.Parser.Char
 import           Text.Parser.Combinators
 
@@ -28,23 +31,26 @@ instance Functor CoAddF where
   fmap f (CoAdd a) = CoAdd (fmap (fmap f) a)
 
 instance Pairing CoAddF AddF where
-    pair f (CoAdd a) (Add x k) = pair f (a x) k
+  pair f (CoAdd a) (Add x k) = pair f (a x) k
 
 instance ConsoleClient AddF where
-    prompt _ = ["add (int)"]
-    parser =
-      string "add" >>
-      space >>
-      many digit >>= \xs ->
-        return $ Add (read xs) (const ())
+  prompt _ = ["add (int)"]
+  parser =
+    string "add" >>
+    space >>
+    many digit >>= \xs ->
+      return $ Add (read xs) (const ())
+  addOutput (Add x k) = Add x $ \b -> do
+    liftIO $ putStrLn ("add result: " ++ show b)
+    k b
 
 instance ConsoleInterpreter CoAddF where
-  addResultLogging (CoAdd f) = CoAdd (fmap (\(b, k) -> (b, putStrLn ("add result: " ++ show b) <$ k)) f)
+  addResultLogging (CoAdd f) = CoAdd (fmap (\(b, k) -> (b, liftIO (putStrLn ("add result: " ++ show b)) <$ k)) f)
 
 instance Monad m => ToNetworkClient AddF m where
   type ClientReq AddF = AddReq
   type ClientRes AddF = AddRes
-  toNetworkClient (Add x f) = NetworkClientF (AddReq x, return (\(AddRes b) -> f b))
+  toNetworkClient (Add x f) = NetworkClientF (AddReq x, \(AddRes b) -> return (f b))
 
 instance Monad m => ToNetworkInterpreter CoAddF m where
   type InterpreterReq CoAddF = AddReq

@@ -29,13 +29,14 @@ instance Functor CoClearF where
   fmap f (CoClear k) = CoClear (f k)
 
 instance Pairing CoClearF ClearF where
-    pair f (CoClear c) (Clear k) = f c k
+  pair f (CoClear c) (Clear k) = f c k
 
 instance ConsoleClient ClearF where
   prompt _ = ["clear"]
   parser = do
     void $ string "clear"
     return $ Clear ()
+  addOutput (Clear k) = Clear k
 
 instance ConsoleInterpreter CoClearF where
   addResultLogging (CoClear k) = CoClear (return () <$ k)
@@ -43,7 +44,7 @@ instance ConsoleInterpreter CoClearF where
 instance Monad m => ToNetworkClient ClearF m where
   type ClientReq ClearF = ClearReq
   type ClientRes ClearF = ClearRes
-  toNetworkClient (Clear k) = NetworkClientF (ClearReq, return (\(ClearRes) -> k))
+  toNetworkClient (Clear k) = NetworkClientF (ClearReq, \(ClearRes) -> return k)
 
 instance Monad m => ToNetworkInterpreter CoClearF m where
   type InterpreterReq CoClearF = ClearReq

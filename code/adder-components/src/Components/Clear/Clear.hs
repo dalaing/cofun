@@ -6,10 +6,10 @@ module Components.Clear.Clear (
 
 import           Components.Clear.Functors (ClearF (..))
 
-import           Util.Coproduct            (SumF, Contains(..))
+import           Util.Coproduct            (Sum, Contains(..))
 
 import           Control.Monad.Free (MonadFree)
 import           Control.Monad.Trans.Free  (liftF)
 
-clear :: (MonadFree (SumF f) m, Contains ClearF f) => m ()
+clear :: (MonadFree (Sum f) m, Contains ClearF f) => m ()
 clear = liftF . inj $ Clear ()

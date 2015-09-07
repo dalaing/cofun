@@ -14,7 +14,8 @@ import           Util.Network      (ToNetworkClient (..), ToNetworkInterpreter (
 import           Util.Network.Functors   (NetworkClientF (..), NetworkInterpreterF (..))
 import           Util.Pairing       (Pairing (..))
 
-import           Control.Monad      (void)
+import           Control.Monad          (void)
+import           Control.Monad.IO.Class (liftIO)
 
 import           Text.Parser.Char
 
@@ -26,24 +27,27 @@ instance Functor TotalF where
 data CoTotalF k = CoTotal (Int, k)
 
 instance Functor CoTotalF where
-    fmap f (CoTotal t) = CoTotal (fmap f t)
+  fmap f (CoTotal t) = CoTotal (fmap f t)
 
 instance Pairing CoTotalF TotalF where
-    pair f (CoTotal t) (Total k) = pair f t k
+  pair f (CoTotal t) (Total k) = pair f t k
 
 instance ConsoleClient TotalF where
   prompt _ = ["total"]
   parser = do
     void $ string "total"
     return $ Total (const ())
+  addOutput (Total k) = Total $ \i -> do
+    liftIO $ putStrLn ("total result: " ++ show i)
+    k i
 
 instance ConsoleInterpreter CoTotalF where
-  addResultLogging (CoTotal (i, k)) = CoTotal (i, putStrLn ("total result: " ++ show i) <$ k)
+  addResultLogging (CoTotal (i, k)) = CoTotal (i, liftIO (putStrLn ("total result: " ++ show i)) <$ k)
 
 instance Monad m => ToNetworkClient TotalF m where
   type ClientReq TotalF = TotalReq
   type ClientRes TotalF = TotalRes
-  toNetworkClient (Total f) = NetworkClientF (TotalReq, return (\(TotalRes i) -> f i))
+  toNetworkClient (Total f) = NetworkClientF (TotalReq, \(TotalRes i) -> return (f i))
 
 instance Monad m => ToNetworkInterpreter CoTotalF m where
   type InterpreterReq CoTotalF = TotalReq
