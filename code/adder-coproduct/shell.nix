@@ -4,6 +4,7 @@ let modifiedHaskellPackages = haskellPackages.override {
         cofun-pairing = self.callPackage ../cofun-pairing {};
         cofun-coproduct = self.callPackage ../cofun-coproduct {};
         cofun-console = self.callPackage ../cofun-console {};
+        cofun-network = self.callPackage ../cofun-network {};
         adder-components = self.callPackage ../adder-components {};
         adder-coproduct = self.callPackage ./. {};
       };

@@ -15,10 +15,10 @@ import           Components.Clear.Functors (ClearF)
 import           Components.Total.Functors (TotalF)
 import           Components.Total.Total    (total)
 
-import Util.Coproduct (SumF)
+import Util.Coproduct (Sum)
 
 import           Control.Monad.Trans.Free  (FreeT)
 
-type AdderF = SumF '[AddF, ClearF, TotalF]
+type AdderF = Sum '[AddF, ClearF, TotalF]
 type AdderT = FreeT AdderF
 
