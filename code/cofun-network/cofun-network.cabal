@@ -20,11 +20,20 @@ library
   exposed-modules:       Util.Network
                        , Util.Network.Errors
                        , Util.Network.Functors
-                       , Util.Network.Wrapped
+                       , Util.Network.Client
+                       , Util.Network.Interpreter
+--                       , Util.Network.Wrapped
   -- other-modules:       
   other-extensions:    FlexibleContexts, FlexibleInstances, TypeOperators, MultiParamTypeClasses
   build-depends:         base >=4.8 && <4.9
+                       , mtl >= 2.2 && <2.3
+                       , bytestring >=0.10 && <0.11
                        , binary >=0.7 && <0.8
+                       , mmorph >= 1.0 && <1.1
+                       , free >= 4.12 && < 4.13
+                       , comonad >= 4.2 && < 4.3
+                       , network-simple >=0.4 && <0.5
+                       , exceptions >=0.8 && <0.9
                        , cofun-coproduct >=0.1 && <0.2
                        , cofun-pairing >=0.1 && <0.2
   hs-source-dirs:      src
