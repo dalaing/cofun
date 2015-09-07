@@ -5,7 +5,7 @@ module AdderService.Console (
 import           AdderService.CoAdder.Class (mkCoAdderWithLogging)
 
 import           Util.Pairing (pairEffect)
-import           Util.Console (runConsole)
+import           Util.Console (runConsole, ConsoleLogging(..))
 
 run :: IO ()
-run = pairEffect (\_ r -> r) (mkCoAdderWithLogging 10 0) runConsole
+run = pairEffect (\_ r -> r) (mkCoAdderWithLogging 10 0) (runConsole WithoutLogging)

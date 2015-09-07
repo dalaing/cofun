@@ -15,6 +15,7 @@ import           Control.Comonad.Trans.Cofree (CofreeT, coiterT)
 import           Control.Comonad.Trans.Env    (EnvT (..))
 import           Control.Comonad.Trans.Store  (StoreT (..))
 import           Data.Functor.Identity        (Identity (..))
+import           Control.Monad.IO.Class
 
 type CoAdderT = CofreeT CoAdderF
 type CoAdder = CoAdderT (StoreT Int (EnvT Int Identity))
@@ -41,7 +42,7 @@ mkCoAdder limit count =
     next = CoAdderF <$> coAdd <*> coClear <*> coTotal
     start = flip StoreT count . EnvT limit . Identity $ const ()
 
-mkCoAdderWithLogging :: Int -> Int -> CoAdder (IO ())
+mkCoAdderWithLogging :: MonadIO m => Int -> Int -> CoAdder (m ())
 mkCoAdderWithLogging limit count =
     coiterT (addResultLogging <$> next) (return () <$ start)
   where

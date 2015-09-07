@@ -1,13 +1,26 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 module AdderService.Functors (
     AdderF(..)
   , CoAdderF(..)
   ) where
 
+import           AdderService.Packets (AdderReq(..), AdderRes(..))
+
 import           Util.Pairing (Pairing (..))
 import           Util.Console (ConsoleClient(..), ConsoleInterpreter(..))
+import           Util.Network (ToNetworkClient(..), ToNetworkInterpreter(..))
+import           Util.Network.Functors (NetworkClientF(..), NetworkInterpreterF(..))
+import           Util.Network.Errors (NetError(..))
 
 import           Control.Applicative
+import           Control.Monad.Except (MonadError(..))
+import           Control.Monad.IO.Class (MonadIO, liftIO)
+import           Control.Monad.Trans.Free
 import           Text.Parser.Char
 import           Text.Parser.Combinators
 
@@ -50,6 +63,14 @@ instance ConsoleClient AdderF where
       clearParser = Clear () <$ string "clear"
       totalParser = Total (const ()) <$ string "total"
 
+  addOutput (Add x k) = Add x $ \b -> do
+    liftIO $ putStrLn ("add result: " ++ show b)
+    k b
+  addOutput (Clear k) = Clear k
+  addOutput (Total k) = Total $ \i -> do
+    liftIO $ putStrLn ("total result: " ++ show i)
+    k i
+
 instance ConsoleInterpreter CoAdderF where
   addResultLogging (CoAdderF a c t) = CoAdderF a' c' t'
     where
@@ -57,10 +78,38 @@ instance ConsoleInterpreter CoAdderF where
         let
           (b, k) = a x
         in
-          (b, putStrLn ("add result: " ++ show b) <$ k)
+          (b, (liftIO $ putStrLn ("add result: " ++ show b)) <$ k)
       c' = return () <$ c
       t' =
         let
           (i, k) = t
         in
-          (i, putStrLn ("total result: " ++ show i) <$ k)
+          (i, (liftIO $ putStrLn ("total result: " ++ show i)) <$ k)
+
+instance (Monad m, MonadError NetError m) => ToNetworkClient AdderF m where
+  type ClientReq AdderF = AdderReq
+  type ClientRes AdderF = AdderRes
+  toNetworkClient (Add x f) = NetworkClientF (AddReq x, g)
+    where 
+      g (AddRes b) = return $ f b
+      g _ = throwError UnexpectedResponse
+  toNetworkClient (Clear k) = NetworkClientF (ClearReq, g)
+    where
+      g ClearRes = return k
+      g _ = throwError UnexpectedResponse
+  toNetworkClient (Total f) = NetworkClientF (TotalReq, g)
+    where
+      g (TotalRes i) = return $ f i
+      g _ = throwError UnexpectedResponse
+
+instance Monad m => ToNetworkInterpreter CoAdderF m where
+  type InterpreterReq CoAdderF = AdderReq
+  type InterpreterRes CoAdderF = AdderRes
+  toNetworkInterpreter (CoAdderF a c t) = NetworkInterpreterF $ \rq -> case rq of
+      AddReq i -> let 
+                    (b, k) = a i
+                  in return (AddRes b, k)
+      ClearReq -> return (ClearRes, c)
+      TotalReq -> let
+                    (i, k) = t
+                  in return (TotalRes i, k)
