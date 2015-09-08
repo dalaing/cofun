@@ -19,10 +19,12 @@ I've written some blog posts corresponding to the content of the talk:
 - [Monad transformers and comonad transformers](/posts/monad_transformers_and_comonad_transformers.html)
 - [Coproducts for free and products for cofree](/posts/coproducts_for_free_and_products_for_cofree.html)
 - [Pairing and IO](/posts/pairing_and_io.html)
+- [Pairing over the network](/posts/pairing_over_the_network.html)
 
 Coming soon:
 
-- Networking
+- Coproducts revisited
+- Coproducts over the network
 
 ### Links
 
