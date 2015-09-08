@@ -364,6 +364,6 @@ It's worth mentioning that this has mostly been by me wondering if I can do some
 The point is that none of this is set in stone, and there are a lot of ways these things can be sliced and diced in fun ways.
 So if you're branching out and hit a roadblock with some of the pieces that I've mentioned in these posts, try to rework it (or replace it) - if there's any deep theory in play here it is almost entirely unintentional.
 
-Next time, I'll be pairing our DSL and interpreter over a network.
+Next time, I'll be [pairing our DSL and interpreter over a network](/posts/pairing_over_the_network.html).
 
 [Questions? Comments?](https://www.reddit.com/r/haskell/comments/3d0fgf/free_cofree_and_io/)
