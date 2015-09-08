@@ -1,0 +1,357 @@
+<!DOCTYPE html> 
+<html lang="en">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Dave Laing - Pairing over the network</title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap-theme.min.css">
+        <link rel="stylesheet" href="../css/custom.css">
+        <link rel="stylesheet" href="../css/syntax.css">
+        <link rel="alternate" type="application/atom+xml" title="Atom - Cofun with cofree comonads" href="../atom.xml" />
+        <link rel="alternate" type="application/rss+xml" title="RSS - Cofun with cofree comonads" href="../rss.xml" />
+    </head>
+    <body>
+        <nav class="navbar navbar-default navbar-static-top">
+        <div class="container">
+        <div class="navbar-header">
+            <div class="navbar-brand">
+                <a href="../">Cofun with cofree comonads</a>
+            </div>
+            <ul class="nav navbar-nav">
+                <li role="presentation"><a href="http://dlaing.org">Back to my main site</a></li>
+            </ul>
+        </div>
+
+        </div>
+        </nav>
+
+        <div class="container">
+            <div class="panel panel-default">
+    <div class="panel-heading">
+        <h3 class="panel-title"><a href="../posts/pairing_over_the_network.html">Pairing over the network</a></h3>
+    </div>
+    <div class="panel-body">
+        <h1 id="the-goal">The goal</h1>
+<p>This is part of an ongoing series of posts about <a href="../">fun with Cofree Comonads</a>. If you’re just jumping in, I’d recommend reading the series from the start, since this post assumes that you’re up to date.</p>
+<p>For this post I want to focus on establishing a pairing between a <code>Free</code>-based DSL with a <code>Cofree</code>-based interpreter over the network.</p>
+<p>This is all meant to be illustrative. I won’t be spending any time on getting the asynchronous exceptions or the binary streaming to anything beyond a toy level, although I may double back at a later date and take care of that.</p>
+<p>Coproducts and products will take a back seat for a post or two, although they’ll return as soon as we have described all of the pieces we need.</p>
+<h1 id="two-approaches">Two approaches</h1>
+<p>Recall that we had a type <code>AdderF</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">AdderF</span> k <span class="fu">=</span> <span class="dt">Add</span> <span class="dt">Int</span> (<span class="dt">Bool</span> <span class="ot">-&gt;</span> k)
+              <span class="fu">|</span> <span class="dt">Clear</span> k
+              <span class="fu">|</span> <span class="dt">Total</span> (<span class="dt">Int</span> <span class="ot">-&gt;</span> k)</code></pre></div>
+<p>and a type <code>CoAdderF</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">CoAdderF</span> k <span class="fu">=</span> <span class="dt">CoAdderF</span> {
+<span class="ot">    addH   ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> (<span class="dt">Bool</span>, k)
+  ,<span class="ot"> clearH ::</span> k
+  ,<span class="ot"> totalH ::</span> (<span class="dt">Int</span>, k)
+  }</code></pre></div>
+<p>In earlier posts, we have discussed that we can view each of the constructors <code>Add</code>, <code>Clear</code> and <code>Total</code> as being comprised of a set of input parameters and a function from output parameters to <code>k</code>.</p>
+<p>If we view our <code>Free AdderF</code> as a protocol, we can view these as requests and responses. Considering our goal is to establish a pairing over the network, this seems like a good avenue to explore.</p>
+<p>To formalize the protocol / request / response notion somewhat, if we had</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Client</span> req res k <span class="fu">=</span> (req, res <span class="ot">-&gt;</span> k)</code></pre></div>
+<p>we could recast <code>AdderF</code> as</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">AdderF</span> k <span class="fu">=</span> <span class="dt">Add</span>   (<span class="dt">Client</span> <span class="dt">Int</span> <span class="dt">Bool</span> k)
+              <span class="fu">|</span> <span class="dt">Clear</span> (<span class="dt">Client</span> () () k)
+              <span class="fu">|</span> <span class="dt">Total</span> (<span class="dt">Client</span> () <span class="dt">Int</span> k)</code></pre></div>
+<p>and with</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Interpreter</span> req res k <span class="fu">=</span> req <span class="ot">-&gt;</span> (res, k)</code></pre></div>
+<p>we could recast <code>CoAdderF</code> as</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">CoAdderF</span> k <span class="fu">=</span> <span class="dt">CoAdderF</span> {
+<span class="ot">    addH   ::</span> <span class="dt">Interpreter</span> <span class="dt">Int</span> <span class="dt">Bool</span> k
+  ,<span class="ot"> clearH ::</span> <span class="dt">Interpreter</span> () () k
+  ,<span class="ot"> totalH ::</span> <span class="dt">Interpreter</span> () <span class="dt">Int</span> k
+  }</code></pre></div>
+<p>We can turn this “inside out” if we define</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">AdderReq</span> <span class="fu">=</span> <span class="dt">AddReq</span> <span class="dt">Int</span>
+              <span class="fu">|</span> <span class="dt">ClearReq</span>
+              <span class="fu">|</span> <span class="dt">TotalReq</span></code></pre></div>
+<p>and</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">AdderRes</span> <span class="fu">=</span> <span class="dt">AddRes</span> <span class="dt">Bool</span>
+              <span class="fu">|</span> <span class="dt">ClearRes</span>
+              <span class="fu">|</span> <span class="dt">TotalRes</span> <span class="dt">Int</span></code></pre></div>
+<p>from which we can get</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">AdderF</span> k <span class="fu">=</span> <span class="dt">Client</span> <span class="dt">AdderReq</span> <span class="dt">AdderRes</span> k</code></pre></div>
+<p>and</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">CoAdderF</span> k <span class="fu">=</span> <span class="dt">Interpreter</span> <span class="dt">AdderReq</span> <span class="dt">AdderRes</span> k</code></pre></div>
+<p>Regardless of which approach we take, we’re going to need:</p>
+<ul>
+<li>pairings between the DSL and the interpreter</li>
+<li>serialization of our requests and responses</li>
+<li>the ability to handle errors and IO</li>
+</ul>
+<p>The first approach is going to require a serialization strategy where none of the coproducts contributing to <code>AdderF</code> will get in each others way. We’ll return to that once we’ve covered some of the associated type-level machinery in the next post.</p>
+<p>The second approach has some risk of mismatching requests and responses while they are in flight. Since we need to handle errors anyway, we just need to make sure that our methods of error handling is sufficient to deal with mismatched requests and responses and all should be well.</p>
+<h1 id="the-intermediate-stage">The intermediate stage</h1>
+<p>Since we’re going to handle effects when we take to the network, lets weave some effects into our client and interpreter types:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">NetworkClientF</span> req res m k <span class="fu">=</span> <span class="dt">NetworkClientF</span> (req, res <span class="ot">-&gt;</span> m k)
+
+<span class="kw">data</span> <span class="dt">NetworkInterpreterF</span> req res m k <span class="fu">=</span> <span class="dt">NetworkInterpreterF</span> (req <span class="ot">-&gt;</span> m (res, k))</code></pre></div>
+<p>We also want these to be <code>Functor</code>s, so that we can pair them:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Functor</span> m <span class="ot">=&gt;</span> <span class="dt">Functor</span> (<span class="dt">NetworkClientF</span> req res m)  <span class="kw">where</span>
+  fmap f (<span class="dt">NetworkClientF</span> k) <span class="fu">=</span> <span class="dt">NetworkClientF</span> (fmap (fmap (fmap f)) k)
+
+<span class="kw">instance</span> <span class="dt">Functor</span> m <span class="ot">=&gt;</span> <span class="dt">Functor</span> (<span class="dt">NetworkInterpreterF</span> req res m) <span class="kw">where</span>
+  fmap f (<span class="dt">NetworkInterpreterF</span> k) <span class="fu">=</span> <span class="dt">NetworkInterpreterF</span> (fmap (fmap (fmap f)) k)</code></pre></div>
+<p>The problem we have now is that <code>Pairing</code> doesn’t know about effects:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">class</span> <span class="dt">Pairing</span> f g <span class="fu">|</span> f <span class="ot">-&gt;</span> g, g <span class="ot">-&gt;</span> f <span class="kw">where</span>
+<span class="ot">  pair ::</span> (a <span class="ot">-&gt;</span> b <span class="ot">-&gt;</span> r) <span class="ot">-&gt;</span> f a <span class="ot">-&gt;</span> g b <span class="ot">-&gt;</span> r</code></pre></div>
+<p>We deal with this in the usual manner - if we need effects, add an <code>m</code> somewhere:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">class</span> <span class="dt">PairingM</span> f g m <span class="fu">|</span> f <span class="ot">-&gt;</span> g, g <span class="ot">-&gt;</span> f <span class="kw">where</span>
+<span class="ot">  pairM ::</span> (a <span class="ot">-&gt;</span> b <span class="ot">-&gt;</span> m r) <span class="ot">-&gt;</span> f a <span class="ot">-&gt;</span> g b <span class="ot">-&gt;</span> m r</code></pre></div>
+<p>(although this was actually concocted in a slightly less ad-hoc manner than just adding an <code>m</code> and hoping).</p>
+<p>Now we have what we need to link the client and interpreter:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> <span class="dt">PairingM</span> (<span class="dt">NetworkInterpreterF</span> req res m) (<span class="dt">NetworkClientF</span> req res m) m <span class="kw">where</span>
+  pairM p (<span class="dt">NetworkInterpreterF</span> fi) (<span class="dt">NetworkClientF</span> (rq, fc)) <span class="fu">=</span> <span class="kw">do</span>
+    (rs, ki) <span class="ot">&lt;-</span> fi rq
+    kc <span class="ot">&lt;-</span> fc rs
+    p ki kc</code></pre></div>
+<p>given some way to actually make use of the <code>PairingM</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">pairEffectM ::</span> ( <span class="dt">Functor</span> (f m)
+               , <span class="dt">PairingM</span> (f m) (g m) m
+               , <span class="dt">Comonad</span> w
+               , <span class="dt">Monad</span> m
+               )
+            <span class="ot">=&gt;</span> (a <span class="ot">-&gt;</span> b <span class="ot">-&gt;</span> m r) <span class="ot">-&gt;</span> <span class="dt">CofreeT</span> (f m) w (m a) <span class="ot">-&gt;</span> <span class="dt">FreeT</span> (g m) m b <span class="ot">-&gt;</span> m r
+pairEffectM p s c <span class="fu">=</span> <span class="kw">do</span>
+  a <span class="ot">&lt;-</span> extract s
+  mb <span class="ot">&lt;-</span> runFreeT c
+  <span class="kw">case</span> mb <span class="kw">of</span>
+    <span class="dt">Pure</span> x <span class="ot">-&gt;</span> p a x
+    <span class="dt">Free</span> gs <span class="ot">-&gt;</span> pairM (pairEffectM p) (unwrap s) gs</code></pre></div>
+<p>This is where we need to get to as a first step to connecting our DSL and interpreter over the network.</p>
+<h1 id="getting-from-the-beginning-to-the-middle">Getting from the beginning to the middle</h1>
+<p>Our previous console example was</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">run ::</span> <span class="dt">IO</span> ()
+run <span class="fu">=</span> pairEffect (\_ r <span class="ot">-&gt;</span> r) (mkCoAdderWithLogging <span class="dv">10</span> <span class="dv">0</span>) runConsole</code></pre></div>
+<p>which connects an interactive console with an interpreter which prints information about what it is up to.</p>
+<p>This made use of</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">runConsole ::</span> (<span class="dt">Functor</span> f, <span class="dt">MonadIO</span> m, <span class="dt">ConsoleClient</span> f, <span class="dt">Monad</span> m) <span class="ot">=&gt;</span> <span class="dt">FreeT</span> f m ()</code></pre></div>
+<p>and the instance of <code>ConsoleClient</code> for <code>AdderF</code>, along with</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">mkCoAdderWithLogging ::</span> <span class="dt">MonadIO</span> m <span class="ot">=&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">CofreeT</span> <span class="dt">CoAdderF</span> (<span class="dt">StoreT</span> <span class="dt">Int</span> (<span class="dt">EnvT</span> <span class="dt">Int</span> <span class="dt">Identity</span>)) (m ())</code></pre></div>
+<p>Our goal is to get the same functionality working across the network.</p>
+<p>What we have so far has the form <code>FreeT AdderF m a</code> or <code>CofreeT CoAdderF w a</code>, and we need to get it into a form that uses <code>NetworkClientF</code> or <code>NetworkInterpreterF</code>.</p>
+<p>There are some useful helper functions for working with <code>FreeT</code> in the <code>Control.Monad.Trans.Free</code> module of the <code>free</code> package.</p>
+<p>Amongst them are</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">transFreeT ::</span> (<span class="dt">Monad</span> m, <span class="dt">Functor</span> g) <span class="ot">=&gt;</span> (forall a<span class="fu">.</span> f a <span class="ot">-&gt;</span> g a) <span class="ot">-&gt;</span> <span class="dt">FreeT</span> f m b <span class="ot">-&gt;</span> <span class="dt">FreeT</span> g m b </code></pre></div>
+<p>which lets us swap out the underlying <code>Functor</code>, and</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">hoistFreeT ::</span> (<span class="dt">Monad</span> m, <span class="dt">Functor</span> f) <span class="ot">=&gt;</span> (forall a<span class="fu">.</span> m a <span class="ot">-&gt;</span> n a) <span class="ot">-&gt;</span> <span class="dt">FreeT</span> f m b <span class="ot">-&gt;</span> <span class="dt">FreeT</span> f n b</code></pre></div>
+<p>which lets us swap out (or transform) the underlying <code>Monad</code>.</p>
+<p>There are also some very handy tools we can use in conjunction with <code>hoistFreeT</code> in the <a href="http://hackage.haskell.org/package/mmorph">mmorph</a> package.</p>
+<p>For cofree, there are instances of <code>ComonadHoist</code> throughout the <code>free</code> package which will give us hoisting, and the <code>master</code> branch on github has</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">transCofreeT ::</span> (<span class="dt">Comonad</span> w, <span class="dt">Functor</span> g) <span class="ot">=&gt;</span> (forall a<span class="fu">.</span> f a <span class="ot">-&gt;</span> g a) <span class="ot">-&gt;</span> <span class="dt">CofreeT</span> f w b <span class="ot">-&gt;</span> <span class="dt">CofreeT</span> g w b </code></pre></div>
+<p>if you’re feeling adventurous and want to play along.</p>
+<p>As an aside: ordinarily I’d try to use <code>transFreeT</code> and <code>hoistFreeT</code> to try to get by with a regular <code>Pairing</code> instance rather than a <code>PairingM</code> instance. I tried a few variants to make that work, but struggled with some of the details of getting the error handling interleaved with the pairing in the correct fashion. I’ll be trying again later on, but if anyone happens to play around with this and finds a way to do without <code>PairingM</code>, please get in touch and let me know.</p>
+<p>We’re usually working with <code>FreeT AdderF m a</code> and we’d like to get that to <code>FreeT (NetworkClientF AdderReq AdderRes m) m a</code>, so it seems like <code>transFreeT</code> is just what we want. Now we need a function to transform <code>AdderF k</code> into <code>NetworkClientF AdderReq AdderRes m k</code> and a function to transform <code>CoAdderF k</code> into <code>NetworkInterpreterF AdderReq AdderRes m k</code>.</p>
+<p>With that in mind - and realizing that we may want to use some of this machinery for more than this single toy example - we set up the type families:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">class</span> <span class="dt">ToNetworkClient</span> (<span class="ot">a ::</span> <span class="fu">*</span> <span class="ot">-&gt;</span> <span class="fu">*</span>) m <span class="kw">where</span>
+  <span class="kw">type</span> <span class="dt">ClientReq</span> a
+  <span class="kw">type</span> <span class="dt">ClientRes</span> a
+<span class="ot">  toNetworkClient ::</span> a k <span class="ot">-&gt;</span> <span class="dt">NetworkClientF</span> (<span class="dt">ClientReq</span> a) (<span class="dt">ClientRes</span> a) m k
+
+<span class="kw">class</span> <span class="dt">ToNetworkInterpreter</span> (<span class="ot">a ::</span> <span class="fu">*</span> <span class="ot">-&gt;</span> <span class="fu">*</span>) m <span class="kw">where</span>
+  <span class="kw">type</span> <span class="dt">InterpreterReq</span> a
+  <span class="kw">type</span> <span class="dt">InterpreterRes</span> a
+<span class="ot">  toNetworkInterpreter ::</span> a k <span class="ot">-&gt;</span> <span class="dt">NetworkInterpreterF</span> (<span class="dt">InterpreterReq</span> a) (<span class="dt">InterpreterRes</span> a) m k</code></pre></div>
+<p>to assist us.</p>
+<p>The translation for <code>AdderF</code> makes use of our network error type:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">NetError</span> <span class="fu">=</span> <span class="dt">Disconnected</span>
+              <span class="fu">|</span> <span class="dt">UnexpectedRequest</span>
+              <span class="fu">|</span> <span class="dt">UnexpectedResponse</span></code></pre></div>
+<p>and introduces a <code>MonadError NetError m</code> constraint from the <code>Control.Monad.Except</code> module in the <code>mtl</code> package:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> (<span class="dt">Monad</span> m, <span class="dt">MonadError</span> <span class="dt">NetError</span> m) <span class="ot">=&gt;</span> <span class="dt">ToNetworkClient</span> <span class="dt">AdderF</span> m <span class="kw">where</span>
+  <span class="kw">type</span> <span class="dt">ClientReq</span> <span class="dt">AdderF</span> <span class="fu">=</span> <span class="dt">AdderReq</span>
+  <span class="kw">type</span> <span class="dt">ClientRes</span> <span class="dt">AdderF</span> <span class="fu">=</span> <span class="dt">AdderRes</span>
+
+  toNetworkClient (<span class="dt">Add</span> x f) <span class="fu">=</span> <span class="dt">NetworkClientF</span> (<span class="dt">AddReq</span> x, g)
+    <span class="kw">where</span>
+      g (<span class="dt">AddRes</span> b) <span class="fu">=</span> return <span class="fu">$</span> f b
+      g _ <span class="fu">=</span> throwError <span class="dt">UnexpectedResponse</span>
+
+  toNetworkClient (<span class="dt">Clear</span> k) <span class="fu">=</span> <span class="dt">NetworkClientF</span> (<span class="dt">ClearReq</span>, g)
+    <span class="kw">where</span>
+      g <span class="dt">ClearRes</span> <span class="fu">=</span> return k
+      g _ <span class="fu">=</span> throwError <span class="dt">UnexpectedResponse</span>
+
+  toNetworkClient (<span class="dt">Total</span> f) <span class="fu">=</span> <span class="dt">NetworkClientF</span> (<span class="dt">TotalReq</span>, g)
+    <span class="kw">where</span>
+      g (<span class="dt">TotalRes</span> i) <span class="fu">=</span> return <span class="fu">$</span> f i
+      g _ <span class="fu">=</span> throwError <span class="dt">UnexpectedResponse</span></code></pre></div>
+<p>The translation for <code>CoAdderF</code> involves less drama:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> <span class="dt">ToNetworkInterpreter</span> <span class="dt">CoAdderF</span> m <span class="kw">where</span>
+  <span class="kw">type</span> <span class="dt">InterpreterReq</span> <span class="dt">CoAdderF</span> <span class="fu">=</span> <span class="dt">AdderReq</span>
+  <span class="kw">type</span> <span class="dt">InterpreterRes</span> <span class="dt">CoAdderF</span> <span class="fu">=</span> <span class="dt">AdderRes</span>
+
+  toNetworkInterpreter (<span class="dt">CoAdderF</span> a c t) <span class="fu">=</span> <span class="dt">NetworkInterpreterF</span> <span class="fu">$</span> \rq <span class="ot">-&gt;</span> <span class="kw">case</span> rq <span class="kw">of</span>
+      <span class="dt">AddReq</span> i <span class="ot">-&gt;</span> <span class="kw">let</span>
+                    (b, k) <span class="fu">=</span> a i
+                  <span class="kw">in</span> return (<span class="dt">AddRes</span> b, k)
+      <span class="dt">ClearReq</span> <span class="ot">-&gt;</span> return (<span class="dt">ClearRes</span>, c)
+      <span class="dt">TotalReq</span> <span class="ot">-&gt;</span> <span class="kw">let</span>
+                    (i, k) <span class="fu">=</span> t
+                  <span class="kw">in</span> return (<span class="dt">TotalRes</span> i, k)</code></pre></div>
+<p>At this point we can recast our DSLs and interpreters into a more network-friendly form, but we still need to connect them up to the network.</p>
+<h1 id="getting-from-the-middle-to-the-end">Getting from the middle to the end</h1>
+<h2 id="the-client-side">The client side</h2>
+<p>From the client side, we want to translate our <code>FreeT c m a</code> to a <code>FreeT (NetworkClientF (ClientReq c) (ClientRes c) m) m a</code>, and then pair it with something to connect it with the network.</p>
+<p>We want something like this:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">pairClient ::</span> ( <span class="dt">Functor</span> m
+              , <span class="dt">MonadError</span> <span class="dt">NetError</span> m
+              , <span class="dt">ToNetworkClient</span> c m
+              )
+           <span class="ot">=&gt;</span> <span class="dt">FreeT</span> c m () <span class="ot">-&gt;</span> m ()
+pairClient <span class="fu">=</span> pairEffectM (\_ r <span class="ot">-&gt;</span> return r) <span class="fu">???</span> <span class="fu">.</span> transFreeT toNetworkClient</code></pre></div>
+<p>and from the pairing we already have, we can reasonably assume that <code>???</code> is going to be some kind of <code>CofreeT (NetworkInterpreterF (InterpreterReq c) (InterpreterRes c) m) w a</code></p>
+<p>Making use of the <code>network-simple</code> package and assuming that we’ve already got access to a connected <code>Socket</code>, we can devise something like that:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">mkClientConnector ::</span> ( <span class="dt">Functor</span> m
+                     , <span class="dt">MonadReader</span> <span class="dt">Socket</span> m
+                     , <span class="dt">MonadError</span> <span class="dt">NetError</span> m
+                     , <span class="dt">MonadIO</span> m
+                     , <span class="dt">Binary</span> req
+                     , <span class="dt">Binary</span> res
+                     )
+                  <span class="ot">=&gt;</span> <span class="dt">Cofree</span> (<span class="dt">NetworkInterpreterF</span> req res m) (m ())
+mkClientConnector <span class="fu">=</span> coiterT f (<span class="dt">Identity</span> (return ()))
+  <span class="kw">where</span>
+    f w <span class="fu">=</span> <span class="dt">NetworkInterpreterF</span> <span class="fu">$</span> \req <span class="ot">-&gt;</span> <span class="kw">do</span>
+      <span class="co">-- get the socket</span>
+      s <span class="ot">&lt;-</span> ask
+      <span class="co">-- encode and send the request</span>
+      send s <span class="fu">.</span> L.toStrict <span class="fu">.</span> encode <span class="fu">$</span> req
+      <span class="co">-- read and decode the response</span>
+      res <span class="ot">&lt;-</span> fmap (decode <span class="fu">.</span> L.fromStrict) <span class="fu">&lt;$&gt;</span> recv s <span class="dv">1024</span>
+      <span class="co">-- check for disconnection</span>
+      <span class="kw">case</span> res <span class="kw">of</span>
+        <span class="dt">Nothing</span> <span class="ot">-&gt;</span> throwError <span class="dt">Disconnected</span>
+        <span class="dt">Just</span> x <span class="ot">-&gt;</span> return (x, w)</code></pre></div>
+<p>This is where we end up needing <code>Binary</code> instances for <code>AdderReq</code> and <code>AdderRes</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Binary</span> <span class="dt">AdderReq</span> <span class="kw">where</span>
+  put (<span class="dt">AddReq</span> i) <span class="fu">=</span> putWord8 <span class="dv">0</span> <span class="fu">&gt;&gt;</span> put i
+  put <span class="dt">ClearReq</span> <span class="fu">=</span> putWord8 <span class="dv">1</span>
+  put <span class="dt">TotalReq</span> <span class="fu">=</span> putWord8 <span class="dv">2</span>
+
+  get <span class="fu">=</span> <span class="kw">do</span>
+    x <span class="ot">&lt;-</span> getWord8
+    <span class="kw">case</span> x <span class="kw">of</span>
+      <span class="dv">0</span> <span class="ot">-&gt;</span> <span class="dt">AddReq</span> <span class="fu">&lt;$&gt;</span> get
+      <span class="dv">1</span> <span class="ot">-&gt;</span> return <span class="dt">ClearReq</span>
+      <span class="dv">2</span> <span class="ot">-&gt;</span> return <span class="dt">TotalReq</span>
+      _ <span class="ot">-&gt;</span> empty
+
+<span class="kw">instance</span> <span class="dt">Binary</span> <span class="dt">AdderRes</span> <span class="kw">where</span>
+  put (<span class="dt">AddRes</span> b) <span class="fu">=</span> putWord8 <span class="dv">0</span> <span class="fu">&gt;&gt;</span> put b
+  put <span class="dt">ClearRes</span> <span class="fu">=</span> putWord8 <span class="dv">1</span>
+  put (<span class="dt">TotalRes</span> i) <span class="fu">=</span> putWord8 <span class="dv">2</span> <span class="fu">&gt;&gt;</span> put i
+
+  get <span class="fu">=</span> <span class="kw">do</span>
+    x <span class="ot">&lt;-</span> getWord8
+    <span class="kw">case</span> x <span class="kw">of</span>
+      <span class="dv">0</span> <span class="ot">-&gt;</span> <span class="dt">AddRes</span> <span class="fu">&lt;$&gt;</span> get
+      <span class="dv">1</span> <span class="ot">-&gt;</span> return <span class="dt">ClearRes</span>
+      <span class="dv">2</span> <span class="ot">-&gt;</span> <span class="dt">TotalRes</span> <span class="fu">&lt;$&gt;</span> get
+      _ <span class="ot">-&gt;</span> empty</code></pre></div>
+<p>With that in hand, we can update <code>pairClient</code> to make use of <code>mkClientConnector</code>:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">pairClient ::</span> ( <span class="dt">Functor</span> m
+              , <span class="dt">MonadReader</span> <span class="dt">Socket</span> m
+              , <span class="dt">MonadError</span> <span class="dt">NetError</span> m
+              , <span class="dt">MonadIO</span> m
+              , <span class="dt">ToNetworkClient</span> c m
+              , <span class="dt">Binary</span> (<span class="dt">ClientReq</span> c)
+              , <span class="dt">Binary</span> (<span class="dt">ClientRes</span> c)
+              )
+           <span class="ot">=&gt;</span> <span class="dt">FreeT</span> c m () <span class="ot">-&gt;</span> m ()
+pairClient <span class="fu">=</span> pairEffectM (\_ r <span class="ot">-&gt;</span> return r) mkClientConnector <span class="fu">.</span> transFreeT toNetworkClient</code></pre></div>
+<p>We add a helper function to connect the socket and handle the <code>MonadReader Socket</code> and <code>MonadError NetError</code> obligations:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">runClient ::</span> (<span class="dt">MonadIO</span> m, <span class="dt">MonadMask</span> m) <span class="ot">=&gt;</span> <span class="dt">HostName</span> <span class="ot">-&gt;</span> <span class="dt">ServiceName</span> <span class="ot">-&gt;</span> <span class="dt">ReaderT</span> <span class="dt">Socket</span> (<span class="dt">ExceptT</span> <span class="dt">NetError</span> m) a <span class="ot">-&gt;</span> m (<span class="dt">Either</span> <span class="dt">NetError</span> a)
+runClient host service x <span class="fu">=</span> connect host service <span class="fu">$</span> \(sock, _) <span class="ot">-&gt;</span> runExceptT <span class="fu">.</span> flip runReaderT sock <span class="fu">$</span> x</code></pre></div>
+<p>With all of this in hand, we can finally connect our <code>runConsole</code> function to the network:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">networkClient ::</span> <span class="dt">HostName</span> <span class="ot">-&gt;</span> <span class="dt">ServiceName</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> (<span class="dt">Either</span> <span class="dt">NetError</span> ())
+networkClient host service <span class="fu">=</span> runClient host service (pairClient console)
+  <span class="kw">where</span>
+    console <span class="fu">=</span><span class="ot"> runConsole ::</span> <span class="dt">FreeT</span> <span class="dt">AdderF</span> (<span class="dt">ReaderT</span> <span class="dt">Socket</span> (<span class="dt">ExceptT</span> <span class="dt">NetError</span> <span class="dt">IO</span>)) ()</code></pre></div>
+<h2 id="the-interpreter-side">The interpreter side</h2>
+<p>We end up with similar pieces of functionality to get the interpreter connected to the network.</p>
+<p>We have the pairing function:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">pairInterpreter ::</span> ( <span class="dt">Functor</span> m
+                   , <span class="dt">Comonad</span> w
+                   , <span class="dt">MonadReader</span> <span class="dt">Socket</span> m
+                   , <span class="dt">MonadError</span> <span class="dt">NetError</span> m
+                   , <span class="dt">MonadIO</span> m
+                   , <span class="dt">ToNetworkInterpreter</span> i m
+                   , <span class="dt">Binary</span> (<span class="dt">InterpreterReq</span> i)
+                   , <span class="dt">Binary</span> (<span class="dt">InterpreterRes</span> i)
+                   )
+                <span class="ot">=&gt;</span> <span class="dt">CofreeT</span> i w (m ()) <span class="ot">-&gt;</span> m ()
+pairInterpreter server <span class="fu">=</span> pairEffectM (\_ r <span class="ot">-&gt;</span> return r) (transCofreeT toNetworkInterpreter server) mkInterpreterConnector</code></pre></div>
+<p>and we have the <code>FreeT (NetworkClientF (ClientReq i) (ClientRes i) m) ()</code> that the pairing function needs:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">mkInterpreterConnector ::</span> ( <span class="dt">Functor</span> m
+                          , <span class="dt">MonadReader</span> <span class="dt">Socket</span> m
+                          , <span class="dt">MonadError</span> <span class="dt">NetError</span> m
+                          , <span class="dt">MonadIO</span> m
+                          , <span class="dt">Binary</span> req
+                          , <span class="dt">Binary</span> res
+                          )
+                       <span class="ot">=&gt;</span> <span class="dt">FreeT</span> (<span class="dt">NetworkClientF</span> req res m) m ()
+mkInterpreterConnector <span class="fu">=</span> <span class="kw">do</span>
+  <span class="co">-- get the socket</span>
+  s <span class="ot">&lt;-</span> ask
+  <span class="co">-- read and decode the request </span>
+  r <span class="ot">&lt;-</span> fmap (decode <span class="fu">.</span> L.fromStrict) <span class="fu">&lt;$&gt;</span> recv s <span class="dv">1024</span>
+  <span class="kw">case</span> r <span class="kw">of</span>
+    <span class="co">-- stop on disconnection</span>
+    <span class="dt">Nothing</span> <span class="ot">-&gt;</span> <span class="dt">FreeT</span> <span class="fu">$</span> throwError <span class="dt">Disconnected</span>
+    <span class="dt">Just</span> x <span class="ot">-&gt;</span> <span class="dt">FreeT</span> <span class="fu">.</span> return <span class="fu">.</span> <span class="dt">Free</span> <span class="fu">.</span> <span class="dt">NetworkClientF</span> <span class="fu">$</span> (x, \t <span class="ot">-&gt;</span> <span class="kw">do</span>
+      <span class="co">-- encode and send the response</span>
+      _ <span class="ot">&lt;-</span> liftIO <span class="fu">.</span> send s <span class="fu">.</span> L.toStrict <span class="fu">.</span> encode <span class="fu">$</span> t
+      <span class="co">-- keep on going</span>
+      return mkInterpreterConnector
+    )</code></pre></div>
+<p>With the client we didn’t need to use recursion, since the <code>coiterT</code> in <code>mkClientConnector</code> gave us that. Here we need to make a recursive call, but we don’t make the call in the event of a disconnection.</p>
+<p>We have a helper function to serve the interpreter on a particular address and port:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">runInterpreter ::</span> <span class="dt">HostName</span> <span class="ot">-&gt;</span> <span class="dt">ServiceName</span> <span class="ot">-&gt;</span> <span class="dt">ReaderT</span> <span class="dt">Socket</span> (<span class="dt">ExceptT</span> <span class="dt">NetError</span> <span class="dt">IO</span>) () <span class="ot">-&gt;</span> <span class="dt">IO</span> ()
+runInterpreter host service x <span class="fu">=</span>
+  serve (<span class="dt">Host</span> host) service <span class="fu">$</span> \(sock, _) <span class="ot">-&gt;</span>
+     void <span class="fu">.</span> runExceptT <span class="fu">.</span> flip runReaderT sock <span class="fu">$</span> x</code></pre></div>
+<p>with which we can connect our <code>CoAdderF</code> to the network:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="ot">networkInterpreter ::</span> <span class="dt">HostName</span> <span class="ot">-&gt;</span> <span class="dt">ServiceName</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> ()
+networkInterpreter host service <span class="fu">=</span> runInterpreter host service (pairInterpreter <span class="fu">$</span> mkCoAdderWithLogging <span class="dv">10</span> <span class="dv">0</span>)</code></pre></div>
+<h1 id="conclusion">Conclusion</h1>
+<p>There were a few pieces in here, but we should be able to get some good usage out of them in the future.</p>
+<p>Next we will revisit the products and sums of functors (and the pairings between them). I figured out a bit of this on my own, but the <a href="https://github.com/kosmikus/SSGEP/blob/master/LectureNotes.pdf">excellent course notes by Andres Löh</a> got me the rest of the way there.</p>
+<p>After that we will be looking at how to pair our coproduct-based DSLs and product-based interpreters over the network.</p>
+<p>Since we have the various actions in serialized form, we can make further use of that. This could involve playing around with event sourcing - which has a lot of fun side-alleys associated with it - or it could involve setting up a write-ahead log in an attempt to make the pairing-over-the-network atomic an durable.</p>
+<p>I’ve got a growing queue of <code>Cofree</code>-based topics I want to write about, so some of those things might come later.</p>
+    </div>
+    
+    <div class="panel-footer">
+        <h5>Posted on September  7, 2015 </h5>
+    </div>
+    
+</div>
+
+            <div class="row">
+                <div class="col-md-5"> Site proudly generated by <a href="http://jaspervdj.be/hakyll">Hakyll</a> </div>
+                <div class="col-md-7">
+                    This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>
+                    <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-59162164-1', 'auto');
+  ga('send', 'pageview');
+</script>
+
+    </body>
+</html>
