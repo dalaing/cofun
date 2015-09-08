@@ -14,8 +14,8 @@ This page collects various resources related to a YOW Lambda Jam talk I am givin
 
 I've written some blog posts corresponding to the content of the talk:
 
-- [A whirlwind tour of comonads](/posts/comonads.html)
 - [Free monads for DSL, cofree comonads for interpreters](/posts/free_and_cofree.html)
+    - [A whirlwind tour of comonads](/posts/comonads.html)
 - [Monad transformers and comonad transformers](/posts/monad_transformers_and_comonad_transformers.html)
 - [Coproducts for free and products for cofree](/posts/coproducts_for_free_and_products_for_cofree.html)
 - [Pairing and IO](/posts/pairing_and_io.html)
