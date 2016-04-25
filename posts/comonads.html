@@ -126,7 +126,7 @@ right z <span class="fu">=</span> maybe z rightMay z</code></pre></div>
 <p>For <code>extend</code>, it’s time to break out some graphs.</p>
 <p>Just say we have some list zipper, <code>z</code>:</p>
 <div class="figure">
-<img src="../images/comonad-graph1.png" alt />
+<img src="../images/comonad-graph1.png" />
 
 </div>
 <p>The focus is unspecified, but it’s not going to change throughout these examples.</p>
@@ -138,7 +138,7 @@ latch (<span class="dt">Zipper</span> l f _) <span class="fu">=</span>
   maximumDef f l</code></pre></div>
 <p>we can create a list zipper of the highest values as seen when moving from left to right through the zipper:</p>
 <div class="figure">
-<img src="../images/comonad-graph2.png" alt />
+<img src="../images/comonad-graph2.png" />
 
 </div>
 <p>Given a function to determine if the focus is greater than both of its immediate neighbours:</p>
@@ -149,7 +149,7 @@ peak (<span class="dt">Zipper</span> l f r) <span class="fu">=</span>
   headDef f l <span class="fu">&lt;</span> f <span class="fu">&amp;&amp;</span> f <span class="fu">&gt;</span> headDef f r</code></pre></div>
 <p>we can find all of the points which are greater than their neighbours:</p>
 <div class="figure">
-<img src="../images/comonad-graph3.png" alt />
+<img src="../images/comonad-graph3.png" />
 
 </div>
 <p>Given a function to find the average value with a certain distance of the focus:</p>
@@ -158,12 +158,12 @@ wma n (<span class="dt">Zipper</span> l f r) <span class="fu">=</span>
   average <span class="fu">$</span> take n l <span class="fu">++</span> f <span class="fu">:</span> take n r</code></pre></div>
 <p>we can find the windowed moving average of the entire list zipper:</p>
 <div class="figure">
-<img src="../images/comonad-graph4.png" alt />
+<img src="../images/comonad-graph4.png" />
 
 </div>
 <p>We can also compose these functions:</p>
 <div class="figure">
-<img src="../images/comonad-graph5.png" alt />
+<img src="../images/comonad-graph5.png" />
 
 </div>
 <h2 id="conclusion">Conclusion</h2>
