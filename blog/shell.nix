@@ -1,4 +1,4 @@
-{ nixpkgs ? import <nixpkgs> {}, compiler ? "ghc7101" }:
+{ nixpkgs ? import <nixpkgs> {}, compiler ? "ghc7102" }:
 
 let
 
@@ -12,6 +12,7 @@ let
         isLibrary = false;
         isExecutable = true;
         buildDepends = [ base hakyll ];
+        librarySystemDepends = [ nixpkgs.darwin.apple_sdk.frameworks.Cocoa ];
         license = stdenv.lib.licenses.bsd3;
       };
 

@@ -8,7 +8,7 @@ This page collects various resources related to a YOW Lambda Jam talk I am givin
 
 - [The slides](https://github.com/dalaing/cofun/blob/master/slides/slides.pdf)
 - [The code](https://github.com/dalaing/cofun/tree/master/code)
-- The talk video will be linked here when it is available
+- [The video](https://yow.eventer.com/yow-lambda-jam-2015-1305/cofun-with-cofree-comonads-by-david-laing-1891)
 
 ### Posts
 
