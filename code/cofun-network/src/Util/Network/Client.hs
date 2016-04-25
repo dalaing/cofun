@@ -36,7 +36,7 @@ mkClientConnector = coiterT f (Identity (return ()))
           Nothing -> throwError Disconnected
           Just x -> return (x, w)
 
-pairClient :: (Functor m, MonadReader Socket m, MonadError NetError m, MonadIO m, ToNetworkClient c m, Binary (ClientReq c), Binary (ClientRes c)) => FreeT c m () -> m ()
+pairClient :: (Functor m, MonadReader Socket m, MonadError NetError m, MonadIO m, ToNetworkClient m c, Binary (ClientReq c), Binary (ClientRes c)) => FreeT c m () -> m ()
 pairClient = pairEffectM (\_ r -> return r) mkClientConnector . transFreeT toNetworkClient
 
 runClient :: (MonadIO m, MonadMask m) => HostName -> ServiceName -> ReaderT Socket (ExceptT NetError m) a -> m (Either NetError a)

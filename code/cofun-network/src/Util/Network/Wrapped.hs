@@ -4,6 +4,7 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -20,6 +21,99 @@ import Data.Binary
 import GHC.TypeLits
 import Data.Proxy
 
+-- data NetworkClientF req res m k = NetworkClientF (req, res -> m k)
+-- data NetworkInterpreterF req res m k = NetworkInterpreterF (req -> m (res, k))
+
+-- class ToNetworkClient (a :: * -> *) m where
+--     type ClientReq a
+--     type ClientRes a
+--     toNetworkClient :: a k -> NetworkClientF (ClientReq a) (ClientRes a) m k
+
+-- class ToNetworkInterpreter (a :: * -> *) m where
+--    type InterpreterReq a
+--    type InterpreterRes a
+--    toNetworkInterpreter :: a k -> NetworkInterpreterF (InterpreterReq a) (InterpreterRes a) m k
+
+class GatherClientReq m (xs :: [* -> *]) where
+  type ClientReqSum xs :: [*]
+
+instance (ToNetworkClient m h) => GatherClientReq m (h ': '[]) where
+  type ClientReqSum (h ': '[]) = ClientReq h ': '[]
+
+class GatherClientRes m (xs :: [* -> *]) where
+  type ClientResSum xs :: [*]
+
+instance (ToNetworkClient m h) => GatherClientRes m (h ': '[]) where
+  type ClientResSum (h ': '[]) = ClientRes h ': '[]
+
+instance (Monad m, ToNetworkClient m h) => ToNetworkClient m (Sum (h ': '[])) where
+  type ClientReq (Sum (h ': '[])) = Sum0 (ClientReq h ': '[])
+  type ClientRes (Sum (h ': '[])) = Sum0 (ClientRes h ': '[])
+
+  toNetworkClient (SAdd h) = NetworkClientF (req', f')
+    where
+      NetworkClientF (req, f) = toNetworkClient h
+      req' = SAdd0 req
+      f' (SAdd0 h') = f h'
+      f' _ = undefined -- TODO mismatch error
+
+{-
+instance (Monad m, ToNetworkClient m h) => ToNetworkClient m (Sum (h ': i ': 't)) where
+  type ClientReq (Sum (h ': 'i ': t)) = Sum0 (ClientReqSum l)
+  type ClientRes (Sum (h ': 'i ': t)) = Sum0 (ClientResSum l)
+
+  toNetworkClient (SAdd h) =
+    let
+      NetworkClientF (req, f) = toNetworkClient h
+      req' = SAdd0 req
+      f' (SAdd0 h') = f h'
+      f' _ = undefined -- TODO mismatch error
+    in
+      NetworkClientF (req', f')
+
+  toNetworkClient (SNext t) =
+    let
+      NetworkClientF (req, f) = toNetworkClient t
+      req' = SNext0 req
+      f' (SNext0 t') = f t'
+      f' _ = undefined -- TODO mismatch error
+    in
+      NetworkClientF (req', f')
+
+class GatherInterpreterReq m (xs :: [* -> *]) where
+  type InterpreterReqSum xs :: [*]
+
+instance (ToNetworkInterpreter m h) => GatherInterpreterReq m (h ': '[]) where
+  type InterpreterReqSum (h ': '[]) = InterpreterReq h ': '[]
+
+class GatherInterpreterRes m (xs :: [* -> *]) where
+  type InterpreterResSum xs :: [*]
+
+instance (ToNetworkInterpreter m h) => GatherInterpreterRes m (h ': '[]) where
+  type InterpreterResSum (h ': '[]) = InterpreterRes h ': '[]
+
+instance (Monad m, All (ToNetworkInterpreter m) l) => ToNetworkInterpreter m (Sum l) where
+  type InterpreterReq (Sum l) = Sum0 (InterpreterReqSum l)
+  type InterpreterRes (Sum l) = Sum0 (InterpreterResSum l)
+
+  toNetworkInterpreter (SAdd h) =
+    let
+      f = toNetworkInterpreter h
+      f' (SAdd h') = fmap (\(x,y) -> (SAdd x, y)) (f h')
+      f' _ = undefined -- TODO error message
+    in
+      NetworkInterpreterF f'
+
+  toNetworkInterpreter (SNext t) =
+    let
+      f = toNetworkInterpreter t
+      f' (SNext t') = fmap (\(x,y) -> (SNext x, y)) (f t')
+      f' _ = undefined -- TODO error message
+    in
+      NetworkInterpreterF f'
+-}
+
+{-
 newtype TagNat (n :: Nat) p = Tag { untag :: p }
 newtype TagNat1 (n :: Nat) p k = Tag1 { untag1 :: p k }
 
@@ -50,15 +144,14 @@ instance (Monad m, KnownNat n, ToNetworkInterpreter i m, Binary (InterpreterReq 
         f :: NetworkInterpreterF (InterpreterReq i) (InterpreterRes i) m k -> NetworkInterpreterF (TagNat n (InterpreterReq i)) (TagNat n (InterpreterRes i)) m k
         f (NetworkInterpreterF g) = NetworkInterpreterF $ fmap (\(x,y) -> (Tag x, y)) . g . untag
 
-
-data BinarySum (l :: [*]) where
-  BAdd :: Binary h => h -> BinarySum (h ': t)
-  BNext :: BinarySum t -> BinarySum (h ': t) 
+data BinaryList (l :: [*]) where
+  BAdd :: Binary h => h -> BinaryList (h ': t)
+  BNext :: BinaryList t -> BinaryList (h ': t) 
 
 class BinaryHelper (l :: [*]) where
   binLength :: Proxy l -> Word8
-  putHelper :: Word8 -> BinarySum l -> Put
-  getHelper :: Word8 -> Word8 -> Get (BinarySum l)
+  putHelper :: Word8 -> BinaryList l -> Put
+  getHelper :: Word8 -> Word8 -> Get (BinaryList l)
 
 instance Binary h => BinaryHelper (h ': '[]) where
   binLength _ = 1
@@ -76,7 +169,7 @@ instance (Binary h, BinaryHelper (i ': j)) => BinaryHelper (h ': (i ': j)) where
     | l == n = BAdd <$> get
     | otherwise = BNext <$> getHelper (l - 1) n
 
-instance BinaryHelper l => Binary (BinarySum l) where
+instance BinaryHelper l => Binary (BinaryList l) where
     put = putHelper (binLength (Proxy :: Proxy l))
     get = get >>= getHelper (binLength (Proxy :: Proxy l))
 
@@ -93,17 +186,41 @@ instance (ToNetworkClient h m, ClientSumHelper m t) => ClientSumHelper m (h ': t
   type ClientResList (h ': t) = (ClientRes h) ': (ClientResList t)
 
 instance (ToNetworkClient h m) => ToNetworkClient (Sum (h ': '[])) m where
-  type ClientReq (Sum (h ': '[])) = BinarySum (ClientReqList (h ': '[]))
-  type ClientRes (Sum (h ': '[])) = BinarySum (ClientResList (h ': '[]))
+  type ClientReq (Sum (h ': '[])) = BinaryList (ClientReqList (h ': '[]))
+  type ClientRes (Sum (h ': '[])) = BinaryList (ClientResList (h ': '[]))
 
-  toNetworkClient (SAdd h) =  _
+  toNetworkClient (SAdd h) = _
 
 instance (ToNetworkClient h m, ToNetworkClient (Sum (i ': j)) m) => ToNetworkClient (Sum (h ': (i ': j))) m where
-  type ClientReq (Sum (h ': (i ': j))) = BinarySum (ClientReqList (h ': (i ': j)))
-  type ClientRes (Sum (h ': (i ': j))) = BinarySum (ClientResList (h ': (i ': j)))
+  type ClientReq (Sum (h ': (i ': j))) = BinaryList (ClientReqList (h ': (i ': j)))
+  type ClientRes (Sum (h ': (i ': j))) = BinaryList (ClientResList (h ': (i ': j)))
 
-  toNetworkClient (SAdd h) =  _
+  toNetworkClient (SAdd h) = _
   toNetworkClient (SNext t) = _
+
+class InterpreterProductHelper m (l :: [(* -> *)]) where
+  type InterpreterReqList l :: [*]
+  type InterpreterResList l :: [*]
+
+instance InterpreterProductHelper m '[] where
+  type InterpreterReqList '[] = '[]
+  type InterpreterResList '[] = '[]
+
+instance (ToNetworkInterpreter h m, InterpreterProductHelper m t) => InterpreterProductHelper m (h ': t) where
+  type InterpreterReqList (h ': t) = (InterpreterReq h) ': (InterpreterReqList t)
+  type InterpreterResList (h ': t) = (InterpreterRes h) ': (InterpreterResList t)
+
+instance (ToNetworkInterpreter h m) => ToNetworkInterpreter (Product (h ': '[])) m where
+  type InterpreterReq (Product (h ': '[])) = BinaryList (InterpreterReqList (h ': '[]))
+  type InterpreterRes (Product (h ': '[])) = BinaryList (InterpreterResList (h ': '[]))
+
+  toNetworkInterpreter (POne h) = _
+
+instance (ToNetworkInterpreter h m, ToNetworkInterpreter (Product (i ': j)) m) => ToNetworkInterpreter (Product (h ': (i ': j))) m where
+  type InterpreterReq (Product (h ': (i ': j))) = BinaryList (InterpreterReqList (h ': (i ': j)))
+  type InterpreterRes (Product (h ': (i ': j))) = BinaryList (InterpreterResList (h ': (i ': j)))
+
+  toNetworkInterpreter (PMult h t) = _
 
 -- tonetworkclient of sumf, where each component of the sum has
 -- a tonetworkclient instance
@@ -120,3 +237,4 @@ instance (ToNetworkClient h m, ToNetworkClient (Sum (i ': j)) m) => ToNetworkCli
 -- branches of the sums on the outputs, calling the inner toNetworkClient
 -- as they go
 
+-}

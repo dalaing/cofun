@@ -15,7 +15,7 @@ import           Components.Clear.Functors (ClearF)
 import           Components.Total.Functors (TotalF)
 import           Components.Total.Total    (total)
 
-import Util.Coproduct (Sum)
+import           Util.Coproduct            (Sum)
 
 import           Control.Monad.Trans.Free  (FreeT)
 

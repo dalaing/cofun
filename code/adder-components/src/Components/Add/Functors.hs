@@ -47,12 +47,12 @@ instance ConsoleClient AddF where
 instance ConsoleInterpreter CoAddF where
   addResultLogging (CoAdd f) = CoAdd (fmap (\(b, k) -> (b, liftIO (putStrLn ("add result: " ++ show b)) <$ k)) f)
 
-instance Monad m => ToNetworkClient AddF m where
+instance Monad m => ToNetworkClient m AddF where
   type ClientReq AddF = AddReq
   type ClientRes AddF = AddRes
   toNetworkClient (Add x f) = NetworkClientF (AddReq x, \(AddRes b) -> return (f b))
 
-instance Monad m => ToNetworkInterpreter CoAddF m where
+instance Monad m => ToNetworkInterpreter m CoAddF where
   type InterpreterReq CoAddF = AddReq
   type InterpreterRes CoAddF = AddRes
   toNetworkInterpreter (CoAdd f) = NetworkInterpreterF $

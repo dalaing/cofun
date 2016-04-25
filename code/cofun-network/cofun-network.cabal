@@ -22,7 +22,7 @@ library
                        , Util.Network.Functors
                        , Util.Network.Client
                        , Util.Network.Interpreter
---                       , Util.Network.Wrapped
+ --                       , Util.Network.Wrapped
   -- other-modules:       
   other-extensions:    FlexibleContexts, FlexibleInstances, TypeOperators, MultiParamTypeClasses
   build-depends:         base >=4.8 && <4.9

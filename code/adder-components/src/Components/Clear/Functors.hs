@@ -41,12 +41,12 @@ instance ConsoleClient ClearF where
 instance ConsoleInterpreter CoClearF where
   addResultLogging (CoClear k) = CoClear (return () <$ k)
 
-instance Monad m => ToNetworkClient ClearF m where
+instance Monad m => ToNetworkClient m ClearF where
   type ClientReq ClearF = ClearReq
   type ClientRes ClearF = ClearRes
   toNetworkClient (Clear k) = NetworkClientF (ClearReq, \(ClearRes) -> return k)
 
-instance Monad m => ToNetworkInterpreter CoClearF m where
+instance Monad m => ToNetworkInterpreter m CoClearF where
   type InterpreterReq CoClearF = ClearReq
   type InterpreterRes CoClearF = ClearRes
   toNetworkInterpreter (CoClear k) = NetworkInterpreterF $

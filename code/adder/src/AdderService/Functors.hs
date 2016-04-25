@@ -19,8 +19,7 @@ import           Util.Network.Errors (NetError(..))
 
 import           Control.Applicative
 import           Control.Monad.Except (MonadError(..))
-import           Control.Monad.IO.Class (MonadIO, liftIO)
-import           Control.Monad.Trans.Free
+import           Control.Monad.IO.Class (liftIO)
 import           Text.Parser.Char
 import           Text.Parser.Combinators
 

@@ -44,12 +44,12 @@ instance ConsoleClient TotalF where
 instance ConsoleInterpreter CoTotalF where
   addResultLogging (CoTotal (i, k)) = CoTotal (i, liftIO (putStrLn ("total result: " ++ show i)) <$ k)
 
-instance Monad m => ToNetworkClient TotalF m where
+instance Monad m => ToNetworkClient m TotalF where
   type ClientReq TotalF = TotalReq
   type ClientRes TotalF = TotalRes
   toNetworkClient (Total f) = NetworkClientF (TotalReq, \(TotalRes i) -> return (f i))
 
-instance Monad m => ToNetworkInterpreter CoTotalF m where
+instance Monad m => ToNetworkInterpreter m CoTotalF where
   type InterpreterReq CoTotalF = TotalReq
   type InterpreterRes CoTotalF = TotalRes
   toNetworkInterpreter (CoTotal (i, k)) = NetworkInterpreterF $

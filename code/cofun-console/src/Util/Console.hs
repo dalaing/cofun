@@ -13,7 +13,7 @@ module Util.Console (
     , runConsole
     ) where
 
-import           Util.Coproduct (Sum(..), Product(..), NotIn)
+import           Util.Coproduct           (Sum(..), Product(..))
 
 import           Control.Applicative      ((<|>))
 import           Control.Monad            (forever)
@@ -35,7 +35,7 @@ instance (Functor a, ConsoleClient a) => ConsoleClient (Sum (a ': '[])) where
   parser = try (fmap SAdd parser)
   addOutput (SAdd h) = SAdd (addOutput h)
 
-instance (Functor a, ConsoleClient a, NotIn a (b ': c), ConsoleClient (Sum (b ': c))) => ConsoleClient (Sum (a ': (b ': c))) where
+instance (ConsoleClient a, ConsoleClient (Sum (b ': c))) => ConsoleClient (Sum (a ': (b ': c))) where
   prompt _ =
     prompt (Proxy :: Proxy a) ++
     prompt (Proxy :: Proxy (Sum (b ': c)))

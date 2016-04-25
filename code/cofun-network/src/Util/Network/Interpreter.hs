@@ -43,7 +43,7 @@ transCofreeF t (a :< fb) = a :< t fb
 transCofreeT :: (Functor g, Comonad w) => (forall x. f x -> g x) -> CofreeT f w a -> CofreeT g w a
 transCofreeT t = CofreeT . liftW (fmap (transCofreeT t) . transCofreeF t) . runCofreeT
 
-pairInterpreter :: (Functor m, Comonad w, MonadReader Socket m, MonadError NetError m, MonadIO m, ToNetworkInterpreter i m, Binary (InterpreterReq i), Binary (InterpreterRes i)) => CofreeT i w (m ()) -> m ()
+pairInterpreter :: (Functor m, Comonad w, MonadReader Socket m, MonadError NetError m, MonadIO m, ToNetworkInterpreter m i, Binary (InterpreterReq i), Binary (InterpreterRes i)) => CofreeT i w (m ()) -> m ()
 pairInterpreter server = pairEffectM (\_ r -> return r) (transCofreeT toNetworkInterpreter server) mkInterpreterConnector
 
 runInterpreter :: HostName -> ServiceName -> ReaderT Socket (ExceptT NetError IO) () -> IO ()

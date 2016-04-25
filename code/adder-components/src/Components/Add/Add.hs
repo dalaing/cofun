@@ -7,10 +7,10 @@ module Components.Add.Add (
 
 import           Components.Add.Functors  (AddF (..))
 
-import           Util.Coproduct           (Sum, Contains(..))
+import           Util.Coproduct           (Sum, Contains(..), All)
 
 import           Control.Monad.Free (MonadFree)
 import           Control.Monad.Trans.Free (liftF)
 
-add :: (MonadFree (Sum f) m, Contains AddF f) => Int -> m Bool
+add :: (MonadFree (Sum f) m, All Functor f, Contains AddF f) => Int -> m Bool
 add x = liftF . inj $ Add x id

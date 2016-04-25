@@ -8,12 +8,12 @@ module Util.Network (
 
 import Util.Network.Functors (NetworkClientF, NetworkInterpreterF)
 
-class ToNetworkClient (a :: * -> *) m where
+class ToNetworkClient m (a :: * -> *) where
     type ClientReq a
     type ClientRes a
     toNetworkClient :: a k -> NetworkClientF (ClientReq a) (ClientRes a) m k
 
-class ToNetworkInterpreter (a :: * -> *) m where
+class ToNetworkInterpreter m (a :: * -> *) where
     type InterpreterReq a
     type InterpreterRes a
     toNetworkInterpreter :: a k -> NetworkInterpreterF (InterpreterReq a) (InterpreterRes a) m k

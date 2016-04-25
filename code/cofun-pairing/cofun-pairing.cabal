@@ -5,7 +5,7 @@ name:                cofun-pairing
 version:             0.1.0.0
 -- synopsis:            
 -- description:         
-homepage:            https://dlaing.org/cofun
+homepage:            http://dlaing.org/cofun
 license:             BSD3
 license-file:        LICENSE
 author:              Dave Laing
