@@ -1307,7 +1307,7 @@ leftMay (<span class="dt">ListZipper</span> (l <span class="fu">:</span> ls) f r
 
 <span class="co">-- stay put if we&#39;re at the far left end</span>
 <span class="ot">left ::</span> <span class="dt">ListZipper</span> a <span class="ot">-&gt;</span> <span class="dt">ListZipper</span> a
-left z <span class="fu">=</span> maybe z leftMay z
+left z <span class="fu">=</span> fromMaybe z <span class="fu">.</span> leftMay <span class="fu">$</span> z
 
 <span class="ot">rightMay ::</span> <span class="dt">ListZipper</span> a <span class="ot">-&gt;</span> <span class="dt">Maybe</span> (<span class="dt">ListZipper</span> a)
 rightMay (<span class="dt">ListZipper</span> ls f [])       <span class="fu">=</span> <span class="dt">Nothing</span>
@@ -1315,7 +1315,7 @@ rightMay (<span class="dt">ListZipper</span> ls f (r <span class="fu">:</span> r
 
 <span class="co">-- stay put if we&#39;re at the far right end</span>
 <span class="ot">right ::</span> <span class="dt">ListZipper</span> a <span class="ot">-&gt;</span> <span class="dt">ListZipper</span> a
-right z <span class="fu">=</span> maybe z rightMay z</code></pre></div>
+right z <span class="fu">=</span> fromMaybe z <span class="fu">.</span> rightMay <span class="fu">$</span> z</code></pre></div>
 <p>It is pretty easy to come up with a <code>Functor</code> instance:</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Functor</span> <span class="dt">ListZipper</span> <span class="kw">where</span>
   fmap g (<span class="dt">ListZipper</span> ls f rs) <span class="fu">=</span> <span class="dt">ListZipper</span> (fmap g ls) (g f) (fmap g rs)</code></pre></div>
