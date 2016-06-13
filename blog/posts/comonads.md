@@ -104,7 +104,7 @@ leftMay (ListZipper (l : ls) f rs) = Just $ ListZipper ls l (f : rs)
 
 -- stay put if we're at the far left end
 left :: ListZipper a -> ListZipper a
-left z = maybe z leftMay z
+left z = fromMaybe z . leftMay $ z
 
 rightMay :: ListZipper a -> Maybe (ListZipper a)
 rightMay (ListZipper ls f [])       = Nothing
@@ -112,7 +112,7 @@ rightMay (ListZipper ls f (r : rs)) = Just $ ListZipper (f : ls) r rs
 
 -- stay put if we're at the far right end
 right :: ListZipper a -> ListZipper a
-right z = maybe z rightMay z
+right z = fromMaybe z . rightMay $ z
 ```
 
 It is pretty easy to come up with a `Functor` instance:
