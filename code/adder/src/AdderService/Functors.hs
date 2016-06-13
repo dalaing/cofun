@@ -85,7 +85,7 @@ instance ConsoleInterpreter CoAdderF where
         in
           (i, (liftIO $ putStrLn ("total result: " ++ show i)) <$ k)
 
-instance (Monad m, MonadError NetError m) => ToNetworkClient AdderF m where
+instance (Monad m, MonadError NetError m) => ToNetworkClient m AdderF where
   type ClientReq AdderF = AdderReq
   type ClientRes AdderF = AdderRes
   toNetworkClient (Add x f) = NetworkClientF (AddReq x, g)
@@ -101,7 +101,7 @@ instance (Monad m, MonadError NetError m) => ToNetworkClient AdderF m where
       g (TotalRes i) = return $ f i
       g _ = throwError UnexpectedResponse
 
-instance Monad m => ToNetworkInterpreter CoAdderF m where
+instance Monad m => ToNetworkInterpreter m CoAdderF where
   type InterpreterReq CoAdderF = AdderReq
   type InterpreterRes CoAdderF = AdderRes
   toNetworkInterpreter (CoAdderF a c t) = NetworkInterpreterF $ \rq -> case rq of
