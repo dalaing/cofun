@@ -15,7 +15,7 @@ import Util.Network.Errors
 import Util.Pairing
 
 import Control.Comonad
-import Control.Comonad.Trans.Cofree
+import Control.Comonad.Trans.Cofree hiding (transCofreeT)
 import Control.Monad
 import Control.Monad.Except
 import Control.Monad.Reader
@@ -50,4 +50,3 @@ runInterpreter :: HostName -> ServiceName -> ReaderT Socket (ExceptT NetError IO
 runInterpreter host service x =
   serve (Host host) service $ \(sock, _) ->
      void . runExceptT . flip runReaderT sock $ x
-
